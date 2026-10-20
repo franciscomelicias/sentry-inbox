@@ -1,0 +1,34 @@
+{
+  "eventID": "548cd52344064bedb33d7bd44a83874b",
+  "groupID": "1001",
+  "dateCreated": "2026-10-20T13:45:43.781Z",
+  "tags": [
+    { "key": "environment", "value": "prod" },
+    { "key": "release", "value": "86.0.1" }
+  ],
+  "contexts": {
+    "Employee": { "EmployeeId": 1, "Language": "FR" },
+    "Realm": { "Name": "acme", "TenantId": "eu-central-1_placeholder", "Timezone": "Europe/Zurich" },
+    "Request Info": { "FrontendVersion": "86.0.1", "RequestId": "b4d930bd-5e15-4504-a1a4-fd8cf57fa1b3" }
+  },
+  "entries": [
+    {
+      "type": "exception",
+      "data": {
+        "values": [
+          {
+            "type": "ValidationException",
+            "value": "Cannot update DECLINED request status.",
+            "stacktrace": {
+              "frames": [
+                { "module": "org.apache.catalina.core.ApplicationFilterChain", "filename": "ApplicationFilterChain.java", "function": "doFilter", "lineNo": 111, "inApp": false },
+                { "module": "com.rogerhr.customer.api.leave_request.LeaveRequestController", "filename": "LeaveRequestController.java", "function": "cancelPendingLeaveRequest", "lineNo": 287, "inApp": true },
+                { "module": "com.rogerhr.customer.domain.leave_request.LeaveRequestService", "filename": "LeaveRequestService.java", "function": "throwValidationExceptionOnStatus", "lineNo": 2019, "inApp": true }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

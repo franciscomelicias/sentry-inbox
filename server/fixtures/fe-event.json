@@ -1,0 +1,43 @@
+{
+  "eventID": "09ccb26d6ff840cfb5f2b8f804ca6725",
+  "groupID": "2002",
+  "dateCreated": "2026-10-20T13:45:41.039Z",
+  "tags": [
+    { "key": "environment", "value": "prod" },
+    { "key": "release", "value": "86.0.1" }
+  ],
+  "contexts": {
+    "api_request": { "id": "e3347ae1-806d-40ca-b874-70a033ef1790" },
+    "endpoint": { "method": "POST", "status": 400, "url": "https://api.rogerhr.ch/v1/leave-requests/1/pending/cancel" },
+    "realm": { "name": "acme", "tenantId": "eu-central-1_placeholder" }
+  },
+  "entries": [
+    {
+      "type": "exception",
+      "data": {
+        "values": [
+          {
+            "type": "AxiosError",
+            "value": "Request failed with status code 400",
+            "stacktrace": {
+              "frames": [
+                { "filename": "./src/page/leave/LeaveRequestDialog.tsx", "absPath": "app:///assets/LeaveRequestDialog-abc.js", "function": "onSubmit", "lineNo": 42, "inApp": true },
+                { "filename": "../../node_modules/axios/lib/core/settle.js", "function": "settle", "lineNo": 19, "inApp": false }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "breadcrumbs",
+      "data": {
+        "values": [
+          { "category": "api", "message": "API Request", "data": { "requestUuid": "11111111-0000-0000-0000-000000000001", "url": "/v1/leave-types" } },
+          { "category": "api", "message": "API Request", "data": { "requestUuid": "e3347ae1-806d-40ca-b874-70a033ef1790", "url": "/v1/leave-requests/1/pending/cancel" } },
+          { "category": "navigation", "data": { "to": "/profile/leaves" } }
+        ]
+      }
+    }
+  ]
+}
