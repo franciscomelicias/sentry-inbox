@@ -116,13 +116,14 @@ export async function readPrefs(): Promise<Prefs> {
 
 export const writePrefs = (prefs: Prefs) => writeAtomic(join(cacheDir(), "prefs.json"), prefs);
 
-export async function readCachedEvent(id: string): Promise<EventFacts | null> {
-  const text = await readText(join(cacheDir(), "events", `${id}.json`));
-  return text ? (safeJson(text) as EventFacts | null) : null;
+/** Sampled event facts per issue, reused while the issue's lastSeen is unchanged. */
+export async function readCachedFacts(issueId: string): Promise<{ lastSeen: string; facts: EventFacts[] } | null> {
+  const text = await readText(join(cacheDir(), "facts", `${issueId}.json`));
+  return text ? (safeJson(text) as { lastSeen: string; facts: EventFacts[] } | null) : null;
 }
 
-export const writeCachedEvent = (facts: EventFacts) =>
-  writeAtomic(join(cacheDir(), "events", `${facts.eventId}.json`), facts);
+export const writeCachedFacts = (issueId: string, lastSeen: string, facts: EventFacts[]) =>
+  writeAtomic(join(cacheDir(), "facts", `${issueId}.json`), { lastSeen, facts });
 
 export async function readInboxCache(): Promise<Inbox | null> {
   const text = await readText(join(cacheDir(), "inbox.json"));
