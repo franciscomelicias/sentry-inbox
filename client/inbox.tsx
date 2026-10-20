@@ -1,10 +1,12 @@
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
 import { useRpc } from "@getpaseo/plugin/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { applyFilters } from "../shared/filter";
 import type { Bucket, Inbox, IssueRow, Prefs, Range } from "../shared/model";
 import { getInboxRpc, getPrefsRpc, setPrefsRpc } from "../shared/rpc";
+import { FilterBar } from "./filters";
 import { IssueRowView, SmallButton } from "./row";
 import { RulesPanel } from "./rules-panel";
 import { createStyles, type Styles } from "./styles";
@@ -57,8 +59,10 @@ export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [hideId, setHideId] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const searchRef = useRef<TextInput>(null);
 
-  const rows = inbox.data?.rows ?? [];
+  const allRows = inbox.data?.rows ?? [];
+  const rows = prefs ? applyFilters(allRows, prefs.filters) : allRows;
   const tab = prefs?.tab ?? "new";
   const tabRows = rows.filter((row) => row.bucket === tab);
   const nextReleaseOf = (row: IssueRow) => bumpPatch(row.lastRelease ?? inbox.data?.deploy?.version ?? null);
@@ -71,6 +75,10 @@ export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
         if (key === "j" || key === "k") {
           const next = tabRows[Math.min(Math.max(index + (key === "j" ? 1 : -1), 0), tabRows.length - 1)];
           if (next) setSelectedId(next.id);
+          return true;
+        }
+        if (key === "/") {
+          searchRef.current?.focus();
           return true;
         }
         if (key === "?") {
@@ -110,6 +118,7 @@ export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
 
       {inbox.data ? (
         <>
+          <FilterBar prefs={prefs} rows={allRows} searchRef={searchRef} updatePrefs={updatePrefs} styles={styles} />
           <View style={styles.tabs}>
             {TABS.map(({ bucket, label }) => {
               const count = rows.filter((row) => row.bucket === bucket).length;
