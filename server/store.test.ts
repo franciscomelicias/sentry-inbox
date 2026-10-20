@@ -48,6 +48,11 @@ describe("rules store", () => {
     expect((await readRules()).rules.map((rule) => rule.reason)).toEqual(["a", "lead", "b"]);
   });
 
+  it("keeps every rule when the screen adds several at once", async () => {
+    await Promise.all(Array.from({ length: 10 }, (_, index) => addRule({ ...input, reason: String(index) })));
+    expect((await readRules()).rules).toHaveLength(10);
+  });
+
   it("deletes only the given rule", async () => {
     const { id } = await addRule({ ...input, reason: "a" });
     await addRule({ ...input, reason: "b" });

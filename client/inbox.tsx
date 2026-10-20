@@ -16,6 +16,7 @@ import { listenShortcuts } from "./web";
 
 const AUTO_REFRESH_MS = 15 * 60 * 1000;
 const STALE_MS = 5 * 60 * 1000;
+const ARM_MS = 3000;
 
 const TABS: { bucket: Bucket; label: string }[] = [
   { bucket: "new", label: "New" },
@@ -32,8 +33,8 @@ const RANGE_LABELS: Record<Range, string> = { deploy: "Since last deploy", "24h"
 const SHORTCUTS = [
   ["j / k", "next / previous issue"],
   ["o", "expand"],
-  ["i", "investigate"],
-  ["t", "ticket"],
+  ["i i", "investigate (press twice)"],
+  ["t t", "ticket (press twice)"],
   ["h", "hide…"],
   ["u", "known but ugly (opens hide…)"],
   ["g", "graphs"],
@@ -62,6 +63,8 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [hideId, setHideId] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  // i and t start agents: Paseo doesn't tell a surface whether it's visible, so a key needs a confirming second press.
+  const [armed, setArmed] = useState<{ key: string; id: string; at: number } | null>(null);
   const searchRef = useRef<TextInput>(null);
 
   const allRows = inbox.data?.rows ?? [];
@@ -94,13 +97,20 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
         }
         if (!selected) return false;
         if (key === "o") setExpandedId((id) => (id === selected.id ? null : selected.id));
-        else if (key === "i") void agents.investigate(selected);
-        else if (key === "t") void agents.ticket(selected);
+        else if (key === "i" || key === "t") {
+          const confirmed = armed?.key === key && armed.id === selected.id && Date.now() - armed.at < ARM_MS;
+          if (!confirmed) {
+            setArmed({ key, id: selected.id, at: Date.now() });
+            return true;
+          }
+          setArmed(null);
+          void (key === "i" ? agents.investigate(selected) : agents.ticket(selected));
+        }
         else if (key === "h" || key === "u") setHideId((id) => (id === selected.id ? null : selected.id));
         else return false;
         return true;
       }),
-    [tabRows, selectedId, prefs?.graphsOpen, agents],
+    [tabRows, selectedId, prefs?.graphsOpen, agents, armed],
   );
 
   if (prefs === null) return <Text style={[styles.muted, { padding: 20 }]}>Loading…</Text>;
@@ -125,6 +135,9 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
 
       <Banners inbox={inbox.data} error={inbox.error} styles={styles} />
       {agents.error ? <Text style={styles.error}>{agents.error}</Text> : null}
+      {armed && Date.now() - armed.at < ARM_MS ? (
+        <Text style={styles.warning}>Press {armed.key} again to {armed.key === "i" ? "investigate" : "create a ticket for"} the selected issue</Text>
+      ) : null}
       {agents.pending ? <Text style={styles.muted}>Opening agent for {agents.pending}…</Text> : null}
       {inbox.isLoading ? <Text style={styles.muted}>Loading Sentry… (the first load samples every issue's events, it can take a minute)</Text> : null}
 

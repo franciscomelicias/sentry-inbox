@@ -65,7 +65,10 @@ async function request(path: string, params: Record<string, string | string[]> =
     throw new SentryAuthError();
   }
   if (response.status === 429) {
-    blockedUntil = Date.now() + Number(response.headers.get("retry-after") ?? DEFAULT_RETRY_AFTER_S) * 1000;
+    // Sentry sends the reset as epoch seconds; Retry-After is not always there.
+    const reset = Number(response.headers.get("x-sentry-rate-limit-reset")) * 1000;
+    const retryAfter = Number(response.headers.get("retry-after") ?? DEFAULT_RETRY_AFTER_S) * 1000;
+    blockedUntil = reset > Date.now() ? reset : Date.now() + retryAfter;
     throw new SentryRateLimitError("Sentry rate limit");
   }
   if (!response.ok) throw new Error(`Sentry ${response.status} on ${url.pathname}`);
@@ -111,10 +114,12 @@ export function listIssues(projectIds: string[]): Promise<SentryIssue[]> {
 }
 
 /** Hourly counts for the last 24h, oldest first. */
-export async function issueStats24h(ids: string[]): Promise<Map<string, number[]>> {
+export async function issueStats24h(ids: string[], projectIds: string[]): Promise<Map<string, number[]>> {
   if (ids.length === 0) return new Map();
   const stats = await sentryGet<SentryIssue[]>(`/organizations/${ORG}/issues-stats/`, {
     groups: ids,
+    // Without project, Sentry keeps only issues of projects the token's user is a member of.
+    project: projectIds,
     statsPeriod: "24h",
     groupStatsPeriod: "24h",
     environment: "prod",
@@ -122,30 +127,28 @@ export async function issueStats24h(ids: string[]): Promise<Map<string, number[]
   return new Map(stats.map((issue) => [issue.id, (issue.stats?.["24h"] ?? []).map(([, count]) => count)]));
 }
 
-type SentryRelease = { version: string; dateCreated: string; dateReleased?: string | null; lastDeploy?: { dateFinished?: string } | null };
+export type SentryRelease = { version: string; dateCreated: string; firstEvent?: string | null };
 
-const releaseOf = (release: SentryRelease): Release => ({
-  version: release.version,
-  at: release.lastDeploy?.dateFinished ?? release.dateReleased ?? release.dateCreated,
-});
-
-export async function latestRelease(projectId: string): Promise<Release | null> {
-  const [release] = await sentryGet<SentryRelease[]>(`/organizations/${ORG}/releases/`, {
-    project: projectId,
-    per_page: "1",
-    sort: "date",
-  });
-  return release ? releaseOf(release) : null;
+/**
+ * Releases that reached prod, oldest first, dated by their first prod event. Our CI creates the FE release record when
+ * it prepares a release (sourcemaps upload) and never reports deploys, so dateCreated is not when prod switched.
+ * ponytail: a deploy with no error at all stays invisible; upgrade with `sentry-cli deploys new -e prod` in deploy.yml.
+ */
+export function deployedReleases(releases: SentryRelease[]): Release[] {
+  return releases
+    .filter((release): release is SentryRelease & { firstEvent: string } => Boolean(release.firstEvent))
+    .map((release) => ({ version: release.version, at: release.firstEvent }))
+    .sort((a, b) => a.at.localeCompare(b.at));
 }
 
-export async function releasesSince(projectIds: string[], since: string): Promise<Release[]> {
+export async function listDeployedReleases(projectId: string): Promise<Release[]> {
   const releases = await sentryGet<SentryRelease[]>(`/organizations/${ORG}/releases/`, {
-    project: projectIds,
+    project: projectId,
+    environment: "prod",
     per_page: "25",
     sort: "date",
   });
-  const unique = new Map(releases.map(releaseOf).filter((release) => release.at >= since).map((release) => [release.version, release]));
-  return [...unique.values()].sort((a, b) => a.at.localeCompare(b.at));
+  return deployedReleases(releases);
 }
 
 export function latestEvents(issueId: string, limit = 20): Promise<SentryEvent[]> {

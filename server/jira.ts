@@ -32,20 +32,29 @@ type JiraIssue = {
   };
 };
 
-export async function fetchTickets(keys: string[]): Promise<Map<string, Ticket>> {
-  const unique = [...new Set(keys.map((key) => key.toUpperCase()).filter((key) => /^RP-\d+$/.test(key)))];
-  if (unique.length === 0) return new Map();
-  const [email, token] = await Promise.all([secret("email"), secret("token")]);
-  if (!token) throw new JiraCredentialsMissingError();
-  const raw = await run("curl", [
-    "-sS", "--max-time", "15", "-u", `${email}:${token}`, "-H", "Accept: application/json", "--get", JIRA_SEARCH,
-    "--data-urlencode", `jql=key in (${unique.join(",")})`,
-    "--data-urlencode", "fields=status,fixVersions",
-    "--data-urlencode", "maxResults=100",
-  ]);
-  const issues = (JSON.parse(raw) as { issues?: JiraIssue[] }).issues ?? [];
+export class JiraSearchError extends Error {
+  constructor(
+    message: string,
+    readonly badKeys: string[],
+  ) {
+    super(message);
+  }
+}
+
+export function parseJiraSearch(body: string, status: number): Map<string, Ticket> {
+  let parsed: { issues?: JiraIssue[]; errorMessages?: string[] } = {};
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    // A non-JSON body (proxy page, empty 401) is handled by the status check below.
+  }
+  const messages = parsed.errorMessages ?? [];
+  if (status >= 400 || messages.length > 0) {
+    const badKeys = [...new Set(messages.flatMap((message) => message.match(/RP-\d+/gi) ?? []).map((key) => key.toUpperCase()))];
+    throw new JiraSearchError(`Jira search failed (${status}): ${messages.join(" ") || "no details"}`, badKeys);
+  }
   return new Map(
-    issues.map((issue) => [
+    (parsed.issues ?? []).map((issue) => [
       issue.key.toUpperCase(),
       {
         status: issue.fields.status?.name ?? "?",
@@ -54,4 +63,30 @@ export async function fetchTickets(keys: string[]): Promise<Map<string, Ticket>>
       },
     ]),
   );
+}
+
+export async function fetchTickets(keys: string[]): Promise<Map<string, Ticket>> {
+  const unique = [...new Set(keys.map((key) => key.toUpperCase()).filter((key) => /^RP-\d+$/.test(key)))];
+  if (unique.length === 0) return new Map();
+  const [email, token] = await Promise.all([secret("email"), secret("token")]);
+  if (!token) throw new JiraCredentialsMissingError();
+  try {
+    return await search(unique, `${email}:${token}`);
+  } catch (error) {
+    // Jira rejects the whole JQL when one key doesn't exist (typo, deleted ticket): retry once without those keys.
+    const remaining = error instanceof JiraSearchError ? unique.filter((key) => !error.badKeys.includes(key)) : [];
+    if (remaining.length === 0 || remaining.length === unique.length) throw error;
+    return search(remaining, `${email}:${token}`);
+  }
+}
+
+async function search(keys: string[], credentials: string): Promise<Map<string, Ticket>> {
+  const raw = await run("curl", [
+    "-sS", "--max-time", "15", "-u", credentials, "-H", "Accept: application/json", "-w", "\n%{http_code}", "--get", JIRA_SEARCH,
+    "--data-urlencode", `jql=key in (${keys.join(",")})`,
+    "--data-urlencode", "fields=status,fixVersions",
+    "--data-urlencode", "maxResults=100",
+  ]);
+  const newline = raw.lastIndexOf("\n");
+  return parseJiraSearch(raw.slice(0, newline), Number(raw.slice(newline + 1)));
 }

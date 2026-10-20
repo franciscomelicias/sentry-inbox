@@ -21,7 +21,7 @@ export type ClassifyInput = {
   rules: Rule[];
   triage: Triage;
   tickets: Map<string, Ticket>;
-  currentRelease: { FE: string | null; BE: string | null };
+  currentRelease: { FE: Release | null; BE: Release | null };
   /** Releases with their dates, used to name the release an issue was first seen in. */
   releases: (Release & { side: "FE" | "BE" })[];
   rangeStart: string;
@@ -40,7 +40,7 @@ function classifyOne(issue: SentryIssue, input: ClassifyInput, ruleHits: Map<str
   const daily = (issue.stats?.["14d"] ?? []).map(([, count]) => count).slice(-14);
   const last24 = sum(input.hourly24.get(issue.id) ?? []) || (daily.at(-1) ?? 0);
   const side = sideOf(issue.project.slug);
-  const current = side === "FE" ? input.currentRelease.FE : side === "BE" ? input.currentRelease.BE : null;
+  const current = (side === "FE" ? input.currentRelease.FE : side === "BE" ? input.currentRelease.BE : null)?.version ?? null;
   const lastRelease = maxVersion(facts.map((fact) => fact.release));
 
   const row: IssueRow = {
@@ -146,10 +146,13 @@ export function isLifted(
   return Boolean(ticket?.done && ticket.fixVersions.some((version) => version.released));
 }
 
-export function isStaleFe(issue: SentryIssue, facts: EventFacts[], currentFe: string | null): boolean {
+export function isStaleFe(issue: SentryIssue, facts: EventFacts[], currentFe: Release | null): boolean {
   if (STALE_FE_MESSAGES.some((message) => issue.title.includes(message))) return true;
   if (!currentFe || facts.length === 0) return false;
-  return facts.every((fact) => fact.feVersion !== null && compareVersions(fact.feVersion, currentFe) < 0);
+  // Stale = a user still on an old bundle after the new one went live; older events are just old.
+  return facts.every(
+    (fact) => fact.feVersion !== null && compareVersions(fact.feVersion, currentFe.version) < 0 && fact.timestamp >= currentFe.at,
+  );
 }
 
 /** Links FE and BE issues whose sampled events share request ids; folds an FE issue fully matched to one BE issue. */

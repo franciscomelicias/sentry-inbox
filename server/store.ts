@@ -41,9 +41,18 @@ async function readText(path: string): Promise<string | null> {
 
 async function writeAtomic(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.tmp`;
+  const tmp = `${path}.${randomUUID()}.tmp`;
   await writeFile(tmp, JSON.stringify(value, null, 2));
   await rename(tmp, path);
+}
+
+const queues = new Map<string, Promise<unknown>>();
+
+/** Runs `task` after every earlier task on the same path, so read-modify-writes in this process never interleave. */
+function serialized<T>(path: string, task: () => Promise<T>): Promise<T> {
+  const run = (queues.get(path) ?? Promise.resolve()).catch(() => {}).then(task);
+  queues.set(path, run);
+  return run;
 }
 
 export async function readRules(): Promise<{ rules: Rule[]; invalid: string[]; fileError: string | null }> {
@@ -67,7 +76,11 @@ export async function readRules(): Promise<{ rules: Rule[]; invalid: string[]; f
 }
 
 /** Read-modify-write on the raw entries, so rules this version can't parse are kept as they are. */
-async function updateRules(change: (entries: unknown[]) => unknown[]): Promise<void> {
+function updateRules(change: (entries: unknown[]) => unknown[]): Promise<void> {
+  return serialized(rulesPath(), () => rewriteRules(change));
+}
+
+async function rewriteRules(change: (entries: unknown[]) => unknown[]): Promise<void> {
   const text = await readText(rulesPath());
   let entries: unknown = [];
   if (text !== null) {
@@ -114,7 +127,7 @@ export async function readPrefs(): Promise<Prefs> {
   return parsed.success ? parsed.data : DEFAULT_PREFS;
 }
 
-export const writePrefs = (prefs: Prefs) => writeAtomic(join(cacheDir(), "prefs.json"), prefs);
+export const writePrefs = (prefs: Prefs) => serialized(join(cacheDir(), "prefs.json"), () => writeAtomic(join(cacheDir(), "prefs.json"), prefs));
 
 /** Sampled event facts per issue, reused while the issue's lastSeen is unchanged. */
 export async function readCachedFacts(issueId: string): Promise<{ lastSeen: string; facts: EventFacts[] } | null> {

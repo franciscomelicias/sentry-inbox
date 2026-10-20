@@ -63,6 +63,9 @@ function rule(overrides: Partial<Rule>): Rule {
   };
 }
 
+// Live since 2 days ago; facts default to NOW, so they are after the release.
+const live = (version: string) => ({ version, at: daysAgo(2) });
+
 const doneTicket = (fixVersion: string): Ticket => ({ status: "Done", done: true, fixVersions: [{ name: fixVersion, released: true }] });
 
 function run(overrides: Partial<ClassifyInput>) {
@@ -73,7 +76,7 @@ function run(overrides: Partial<ClassifyInput>) {
     rules: [],
     triage: {},
     tickets: new Map(),
-    currentRelease: { FE: "84.2.0", BE: "84.2.0" },
+    currentRelease: { FE: live("84.2.0"), BE: live("84.2.0") },
     releases: [],
     rangeStart: daysAgo(1),
     now: NOW,
@@ -155,6 +158,11 @@ describe("stale frontend", () => {
     expect(rowOf(run({ facts }), "1")).toMatchObject({ bucket: "hidden", hiddenReason: "staleFe" });
   });
 
+  it("keeps old-version events sent before the current frontend went live", () => {
+    const facts = new Map([["1", [fact("1", { feVersion: "84.1.0", timestamp: daysAgo(3) })]]]);
+    expect(rowOf(run({ facts }), "1").hiddenReason).toBeUndefined();
+  });
+
   it("keeps it when one sampled event is on the current frontend", () => {
     const facts = new Map([["1", [fact("1", { feVersion: "84.1.0" }), fact("1", { feVersion: "84.2.0" })]]]);
     expect(rowOf(run({ facts }), "1").hiddenReason).toBeUndefined();
@@ -170,7 +178,7 @@ describe("issue with no sampled events", () => {
   const noFacts = new Map<string, EventFacts[]>([["1", []]]);
 
   it("is not stale", () => {
-    expect(rowOf(run({ facts: noFacts, currentRelease: { FE: "99.0.0", BE: "99.0.0" } }), "1").hiddenReason).toBeUndefined();
+    expect(rowOf(run({ facts: noFacts, currentRelease: { FE: live("99.0.0"), BE: live("99.0.0") } }), "1").hiddenReason).toBeUndefined();
   });
 
   it("is not hidden by a realm rule", () => {
