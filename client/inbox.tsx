@@ -6,6 +6,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { applyFilters } from "../shared/filter";
 import type { Bucket, Inbox, IssueRow, Prefs, Range } from "../shared/model";
 import { getInboxRpc, getPrefsRpc, setPrefsRpc } from "../shared/rpc";
+import { useAgents } from "./agents";
 import { FilterBar } from "./filters";
 import { GraphsPanel } from "./graphs";
 import { IssueRowView, SmallButton } from "./row";
@@ -40,9 +41,10 @@ const SHORTCUTS = [
   ["?", "this help"],
 ];
 
-export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
+export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) {
   const styles = useMemo(() => createStyles(theme.colors, layout.compact), [theme, layout.compact]);
   const [prefs, updatePrefs] = usePrefs();
+  const agents = useAgents(navigation);
   const fetchInbox = useRpc(getInboxRpc);
   const range = prefs?.range ?? "deploy";
   const inbox = useQuery({
@@ -92,11 +94,13 @@ export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
         }
         if (!selected) return false;
         if (key === "o") setExpandedId((id) => (id === selected.id ? null : selected.id));
+        else if (key === "i") void agents.investigate(selected);
+        else if (key === "t") void agents.ticket(selected);
         else if (key === "h" || key === "u") setHideId((id) => (id === selected.id ? null : selected.id));
         else return false;
         return true;
       }),
-    [tabRows, selectedId, prefs?.graphsOpen],
+    [tabRows, selectedId, prefs?.graphsOpen, agents],
   );
 
   if (prefs === null) return <Text style={[styles.muted, { padding: 20 }]}>Loading…</Text>;
@@ -115,10 +119,13 @@ export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
         ))}
         <View style={{ flexGrow: 1 }} />
         {inbox.data ? <Text style={styles.muted}>updated {ago(inbox.data.fetchedAt)}</Text> : null}
+        <SmallButton label="💬 lead:sentry" primary disabled={!agents.available || agents.pending !== null} onPress={() => void agents.openLead()} styles={styles} />
         <SmallButton label={inbox.isFetching ? "…" : "↻"} hint="Refresh" disabled={inbox.isFetching} onPress={forceRefresh} styles={styles} />
       </View>
 
       <Banners inbox={inbox.data} error={inbox.error} styles={styles} />
+      {agents.error ? <Text style={styles.error}>{agents.error}</Text> : null}
+      {agents.pending ? <Text style={styles.muted}>Opening agent for {agents.pending}…</Text> : null}
       {inbox.isLoading ? <Text style={styles.muted}>Loading Sentry… (the first load samples every issue's events, it can take a minute)</Text> : null}
 
       {inbox.data ? (
@@ -158,13 +165,13 @@ export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
               expanded={row.id === expandedId}
               hideOpen={row.id === hideId}
               nextRelease={nextReleaseOf(row)}
-              agentsAvailable={false}
+              agentsAvailable={agents.available && agents.pending === null}
               onSelect={() => {
                 setSelectedId(row.id);
                 setExpandedId((id) => (id === row.id ? null : row.id));
               }}
-              onInvestigate={() => {}}
-              onTicket={() => {}}
+              onInvestigate={() => void agents.investigate(row)}
+              onTicket={() => void agents.ticket(row)}
               onToggleHide={() => setHideId((id) => (id === row.id ? null : row.id))}
               onHidden={() => setHideId(null)}
             />
