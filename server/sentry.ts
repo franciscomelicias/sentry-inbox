@@ -37,17 +37,19 @@ export type SentryIssue = {
 
 export type Release = { version: string; at: string };
 
-let token: string | null | undefined;
+let token: string | undefined;
 let blockedUntil = 0;
 
+/** Remembered only once found, so a token added later is picked up without a plugin reload. */
 export async function getToken(): Promise<string | null> {
-  if (token !== undefined) return token;
-  token =
+  if (token) return token;
+  const found =
     process.env.SENTRY_AUTH_TOKEN ||
     (await execFileAsync("security", ["find-generic-password", "-s", "sentry-inbox", "-a", "token", "-w"], { timeout: 5_000 })
-      .then(({ stdout }) => stdout.trim() || null)
-      .catch(() => null));
-  return token;
+      .then(({ stdout }) => stdout.trim())
+      .catch(() => ""));
+  token = found || undefined;
+  return token ?? null;
 }
 
 async function request(path: string, params: Record<string, string | string[]> = {}): Promise<Response> {

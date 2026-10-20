@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { deployedReleases } from "./sentry";
+import { deployedReleases, getToken } from "./sentry";
+
+describe("getToken", () => {
+  it("picks up a token added after a lookup found none", async () => {
+    delete process.env.SENTRY_AUTH_TOKEN;
+    await getToken();
+    process.env.SENTRY_AUTH_TOKEN = "added-later";
+    expect(await getToken()).toBe("added-later");
+    delete process.env.SENTRY_AUTH_TOKEN;
+  });
+});
 
 describe("deployedReleases", () => {
   it("dates a release by its first prod event, and skips one prepared but not live yet", () => {
