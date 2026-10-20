@@ -1,0 +1,7 @@
+{
+  "id": "sentry-inbox",
+  "description": "Sentry triage: hides known and stale-frontend errors, organises the rest, investigates and tickets them",
+  "requirements": {
+    "paseo": ">=0.10.3"
+  }
+}
