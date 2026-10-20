@@ -26,7 +26,6 @@ export function FilterBar({ prefs, rows, searchRef, updatePrefs, styles }: Props
   const set = (patch: Partial<Filters>) => updatePrefs({ filters: { ...filters, ...patch } });
   const toggle = <T,>(list: T[], value: T) => (list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
   const areas = [...new Set(rows.map((row) => row.area))].sort();
-  const realms = [...new Set(rows.flatMap((row) => row.realms.map((realm) => realm.name)))].sort();
   const views = [...DEFAULT_VIEWS, ...prefs.savedViews];
 
   return (
@@ -99,32 +98,6 @@ export function FilterBar({ prefs, rows, searchRef, updatePrefs, styles }: Props
         </View>
       ) : null}
 
-      {realms.length > 0 ? (
-        <View style={styles.wrap}>
-          <Text style={styles.muted}>Realm (tap: only → hide → any)</Text>
-          {realms.map((realm) => {
-            const included = filters.realmsInclude.includes(realm);
-            const excluded = filters.realmsExclude.includes(realm);
-            return (
-              <Chip
-                key={realm}
-                label={`${included ? "✓ " : excluded ? "− " : ""}${realm}`}
-                active={included || excluded}
-                onPress={() =>
-                  set(
-                    included
-                      ? { realmsInclude: toggle(filters.realmsInclude, realm), realmsExclude: [...filters.realmsExclude, realm] }
-                      : excluded
-                        ? { realmsExclude: toggle(filters.realmsExclude, realm) }
-                        : { realmsInclude: [...filters.realmsInclude, realm] },
-                  )
-                }
-                styles={styles}
-              />
-            );
-          })}
-        </View>
-      ) : null}
     </View>
   );
 }

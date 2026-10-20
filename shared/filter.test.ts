@@ -29,20 +29,9 @@ function row(id: string, overrides: Partial<IssueRow> = {}): IssueRow {
   };
 }
 
-const realms = (...names: string[]) => names.map((name) => ({ name, events: 1, users: 0 }));
 const ids = (rows: IssueRow[], filters: Partial<Filters>) => applyFilters(rows, { ...DEFAULT_FILTERS, ...filters }).map((item) => item.id);
 
 describe("applyFilters", () => {
-  it("excludes a realm only when every realm of the issue is excluded", () => {
-    const rows = [row("demo-only", { realms: realms("demo") }), row("mixed", { realms: realms("demo", "acme") }), row("none")];
-    expect(ids(rows, { realmsExclude: ["demo"] })).toEqual(["mixed", "none"]);
-  });
-
-  it("includes issues hitting any included realm", () => {
-    const rows = [row("1", { realms: realms("acme") }), row("2", { realms: realms("hug") })];
-    expect(ids(rows, { realmsInclude: ["acme"] })).toEqual(["1"]);
-  });
-
   it("keeps only older releases", () => {
     expect(ids([row("old", { isCurrentRelease: false }), row("current")], { release: "older" })).toEqual(["old"]);
   });
