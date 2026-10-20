@@ -108,17 +108,10 @@ export const issueRowSchema = z.object({
 export type IssueRow = z.infer<typeof issueRowSchema>;
 
 export const graphsSchema = z.object({
-  headline: z.object({
-    newSinceDeploy: z.number(),
-    eventsPerHourNow: z.number(),
-    eventsPerHourBefore: z.number(),
-    realmsWithNew: z.number(),
-    fixFailed: z.number(),
-  }),
+  headline: z.object({ eventsPerHourNow: z.number(), eventsPerHourBefore: z.number() }),
   hourly: z.array(z.object({ at: z.string(), count: z.number() })),
   releases: z.array(z.object({ version: z.string(), at: z.string() })),
   perArea: z.array(z.object({ area: z.string(), before: z.number(), after: z.number(), unit: z.enum(["hour", "day"]) })),
-  heatmap: z.array(z.object({ issueId: z.string(), title: z.string(), days: z.array(z.number()) })),
   dayLabels: z.array(z.string()),
 });
 

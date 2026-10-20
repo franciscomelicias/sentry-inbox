@@ -7,6 +7,7 @@ import { applyFilters } from "../shared/filter";
 import type { Bucket, Inbox, IssueRow, Prefs, Range } from "../shared/model";
 import { getInboxRpc, getPrefsRpc, setPrefsRpc } from "../shared/rpc";
 import { FilterBar } from "./filters";
+import { GraphsPanel } from "./graphs";
 import { IssueRowView, SmallButton } from "./row";
 import { RulesPanel } from "./rules-panel";
 import { createStyles, type Styles } from "./styles";
@@ -81,6 +82,10 @@ export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
           searchRef.current?.focus();
           return true;
         }
+        if (key === "g") {
+          updatePrefs({ graphsOpen: !prefs?.graphsOpen });
+          return true;
+        }
         if (key === "?") {
           setShowHelp((shown) => !shown);
           return true;
@@ -91,7 +96,7 @@ export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
         else return false;
         return true;
       }),
-    [tabRows, selectedId],
+    [tabRows, selectedId, prefs?.graphsOpen],
   );
 
   if (prefs === null) return <Text style={[styles.muted, { padding: 20 }]}>Loading…</Text>;
@@ -118,6 +123,15 @@ export function InboxSurface({ theme, layout }: PluginSurfaceProps) {
 
       {inbox.data ? (
         <>
+          <GraphsPanel
+            graphs={inbox.data.graphs}
+            rows={prefs.filters.cell ? applyFilters(allRows, { ...prefs.filters, cell: null }) : rows}
+            deployAt={inbox.data.deploy?.at ?? null}
+            open={prefs.graphsOpen}
+            onToggle={() => updatePrefs({ graphsOpen: !prefs.graphsOpen })}
+            onCell={(issueId, day, bucket) => updatePrefs({ tab: bucket, filters: { ...prefs.filters, cell: { issueId, day } } })}
+            styles={styles}
+          />
           <FilterBar prefs={prefs} rows={allRows} searchRef={searchRef} updatePrefs={updatePrefs} styles={styles} />
           <View style={styles.tabs}>
             {TABS.map(({ bucket, label }) => {

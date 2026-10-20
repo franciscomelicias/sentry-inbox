@@ -3,7 +3,6 @@ import type { Release } from "./sentry";
 
 const HOUR_MS = 3600 * 1000;
 const DAY_MS = 24 * HOUR_MS;
-const HEATMAP_ROWS = 8;
 
 export type GraphsInput = {
   rows: IssueRow[];
@@ -18,7 +17,6 @@ export function buildGraphs(input: GraphsInput): Graphs {
   const now = Date.parse(input.now);
   const deploy = input.deployAt ? Date.parse(input.deployAt) : now - DAY_MS;
   const visible = input.rows.filter((row) => row.bucket !== "hidden");
-  const fresh = visible.filter((row) => Date.parse(row.firstSeen) >= deploy);
   // The hour the deploy falls in mixes both sides, so it counts for neither.
   const hourlyAfter = input.hourly.filter((bucket) => Date.parse(bucket.at) >= deploy);
   const hourlyBefore = input.hourly.filter((bucket) => {
@@ -27,19 +25,12 @@ export function buildGraphs(input: GraphsInput): Graphs {
   });
   return {
     headline: {
-      newSinceDeploy: fresh.length,
       eventsPerHourNow: round(mean(hourlyAfter.map((bucket) => bucket.count))),
       eventsPerHourBefore: round(mean(hourlyBefore.map((bucket) => bucket.count))),
-      realmsWithNew: new Set(fresh.flatMap((row) => row.realms.map((realm) => realm.name))).size,
-      fixFailed: input.rows.filter((row) => row.bucket === "fixFailed").length,
     },
     hourly: input.hourly,
     releases: input.releases,
     perArea: perArea(visible, input.hourly24, input.deployAt ? deploy : null, now),
-    heatmap: [...visible]
-      .sort((a, b) => sum(b.daily) - sum(a.daily))
-      .slice(0, HEATMAP_ROWS)
-      .map((row) => ({ issueId: row.id, title: row.title, days: row.daily })),
     dayLabels: Array.from({ length: 14 }, (_, index) => new Date(now - (13 - index) * DAY_MS).toISOString().slice(0, 10)),
   };
 }

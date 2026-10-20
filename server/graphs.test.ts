@@ -47,16 +47,6 @@ describe("buildGraphs", () => {
     expect(headline.eventsPerHourNow).toBe(40);
   });
 
-  it("counts new issues and their realms since the deploy", () => {
-    const rows = [
-      row("1", { firstSeen: hoursAgo(1), realms: [{ name: "acme", events: 1, users: 0 }] }),
-      row("2", { firstSeen: hoursAgo(2), realms: [{ name: "acme", events: 1, users: 0 }, { name: "hug", events: 1, users: 0 }] }),
-      row("3"),
-      row("4", { firstSeen: hoursAgo(1), bucket: "fixFailed" }),
-    ];
-    expect(run({ rows }).headline).toMatchObject({ newSinceDeploy: 3, realmsWithNew: 2, fixFailed: 1 });
-  });
-
   it("uses hours per area for a recent deploy", () => {
     const hourly24 = new Map([["1", [...Array(21).fill(1), 5, 5, 5]]]);
     expect(run({ hourly24 }).perArea).toEqual([{ area: "Time", before: 1, after: 5, unit: "hour" }]);
@@ -69,17 +59,10 @@ describe("buildGraphs", () => {
     ]);
   });
 
-  it("keeps the 8 busiest visible issues in the heatmap, busiest first", () => {
-    const rows = Array.from({ length: 10 }, (_, index) => row(String(index), { daily: Array(14).fill(index) }));
-    rows.push(row("hidden", { daily: Array(14).fill(100), bucket: "hidden" }));
-    const { heatmap, dayLabels } = run({ rows });
-    expect(heatmap.map((entry) => entry.issueId)).toEqual(["9", "8", "7", "6", "5", "4", "3", "2"]);
+  it("returns 14 day labels ending today and copes without a deploy", () => {
+    const { dayLabels, perArea } = run({ deployAt: null });
     expect(dayLabels).toHaveLength(14);
     expect(dayLabels.at(-1)).toBe("2026-10-20");
-  });
-
-  it("works without a deploy, counting issues first seen in the last 24h", () => {
-    const rows = [row("1", { firstSeen: hoursAgo(5) }), row("2")];
-    expect(run({ rows, deployAt: null }).headline.newSinceDeploy).toBe(1);
+    expect(perArea[0].unit).toBe("day");
   });
 });
