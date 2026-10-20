@@ -45,7 +45,7 @@ export async function getToken(): Promise<string | null> {
   if (token) return token;
   const found =
     process.env.SENTRY_AUTH_TOKEN ||
-    (await execFileAsync("security", ["find-generic-password", "-s", "sentry-inbox", "-a", "token", "-w"], { timeout: 5_000 })
+    (await execFileAsync("security", ["find-generic-password", "-s", process.env.SENTRY_INBOX_KEYCHAIN_SERVICE ?? "sentry-inbox", "-a", "token", "-w"], { timeout: 5_000 })
       .then(({ stdout }) => stdout.trim())
       .catch(() => ""));
   token = found || undefined;

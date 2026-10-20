@@ -4,10 +4,12 @@ import { deployedReleases, getToken } from "./sentry";
 describe("getToken", () => {
   it("picks up a token added after a lookup found none", async () => {
     delete process.env.SENTRY_AUTH_TOKEN;
-    await getToken();
+    process.env.SENTRY_INBOX_KEYCHAIN_SERVICE = "sentry-inbox-test-absent";
+    expect(await getToken()).toBeNull();
     process.env.SENTRY_AUTH_TOKEN = "added-later";
     expect(await getToken()).toBe("added-later");
     delete process.env.SENTRY_AUTH_TOKEN;
+    delete process.env.SENTRY_INBOX_KEYCHAIN_SERVICE;
   });
 });
 

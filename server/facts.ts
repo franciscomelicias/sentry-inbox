@@ -53,10 +53,13 @@ function lastApiRequestUuid(event: SentryEvent): string | null {
   return text(api.at(-1)?.data?.requestUuid);
 }
 
-/** Sentry lists frames outermost first, so the last in-app frame is where the error was thrown. */
+/**
+ * Sentry lists a chain root cause first and frames outermost first: the last in-app frame of the deepest
+ * exception that has one is where our code was when it failed.
+ */
 function topFrame(event: SentryEvent): EventFacts["topFrame"] {
-  const exception = entryValues(event, "exception")[0] as { stacktrace?: { frames?: Frame[] } } | undefined;
-  const frame = exception?.stacktrace?.frames?.filter((candidate) => candidate.inApp).at(-1);
+  const chain = entryValues(event, "exception") as { stacktrace?: { frames?: Frame[] } }[];
+  const frame = chain.map((exception) => exception.stacktrace?.frames?.filter((candidate) => candidate.inApp).at(-1)).find(Boolean);
   if (!frame) return null;
   const path = framePath(frame);
   return path ? { path, line: frame.lineNo ?? 0 } : null;

@@ -32,6 +32,26 @@ describe("extractFacts", () => {
     expect(facts.requestId).toBe("e3347ae1-806d-40ca-b874-70a033ef1790");
   });
 
+  it("finds our frame in a chained exception whose root cause has none", () => {
+    const frame = (module: string, inApp: boolean) => ({ module, filename: `${module.split(".").at(-1)}.java`, lineNo: 7, inApp });
+    const chained = {
+      eventID: "c",
+      dateCreated: "2026-10-20T00:00:00Z",
+      entries: [
+        {
+          type: "exception",
+          data: {
+            values: [
+              { type: "IOException", stacktrace: { frames: [frame("org.apache.catalina.Socket", false)] } },
+              { type: "HttpMessageNotWritableException", stacktrace: { frames: [frame("com.rogerhr.customer.api.shift.ShiftController", true)] } },
+            ],
+          },
+        },
+      ],
+    };
+    expect(extractFacts(chained, "4", "roger-customer-api-prod").topFrame?.path).toBe("com/rogerhr/customer/api/shift/ShiftController.java");
+  });
+
   it("returns nulls for an event without contexts, breadcrumbs or frames", () => {
     const facts = extractFacts({ eventID: "x", dateCreated: "2026-10-20T00:00:00Z" }, "3", "roger-customer-api-prod");
     expect(facts).toMatchObject({ release: null, realm: null, feVersion: null, requestId: null, topFrame: null });
