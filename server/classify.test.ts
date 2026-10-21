@@ -262,6 +262,16 @@ describe("frontend + backend links", () => {
   });
 });
 
+describe("where it was thrown", () => {
+  it("keeps the first sampled top frame as file:line", () => {
+    expect(rowOf(run({}), "1").topFrame).toBe("com/rogerhr/customer/domain/adjustment/AdjustmentService.java:10");
+  });
+
+  it("is absent when no sampled event has an in-app frame", () => {
+    expect(rowOf(run({ facts: new Map([["1", [fact("1", { topFrame: null })]]]) }), "1").topFrame).toBeUndefined();
+  });
+});
+
 describe("realms and releases", () => {
   it("counts sampled events per realm, most first", () => {
     const facts = new Map([["1", [fact("1", { realm: "b" }), fact("1", { realm: "a" }), fact("1", { realm: "a" })]]]);

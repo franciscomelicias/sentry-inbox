@@ -86,6 +86,7 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
   const searchRef = useRef<TextInput>(null);
 
   const allRows = inbox.data?.rows ?? [];
+  const byId = new Map(allRows.map((row) => [row.id, row]));
   const rows = prefs ? applyFilters(allRows, prefs.filters) : allRows;
   const tab = prefs?.tab ?? "new";
   const tabRows = rows.filter((row) => row.bucket === tab);
@@ -220,6 +221,8 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
                 onTicket={() => void agents.ticket(row)}
                 onToggleHide={() => setHideId((id) => (id === row.id ? null : row.id))}
                 onHidden={() => setHideId(null)}
+                linkedRows={row.links.flatMap((link) => byId.get(link.issueId) ?? [])}
+                onInvestigateLinked={(linked) => void agents.investigate(linked)}
               />
             );
             if (group.rows.length === 1) return renderRow(group.rows[0]);

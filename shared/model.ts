@@ -106,6 +106,8 @@ export const issueRowSchema = z.object({
   rp: z.object({ key: z.string(), status: z.string(), done: z.boolean() }).optional(),
   triage: triageEntrySchema.optional(),
   owner: z.string().optional(),
+  /** "path:line" of our code where it was thrown, from the sampled events. */
+  topFrame: z.string().optional(),
 });
 
 export type IssueRow = z.infer<typeof issueRowSchema>;

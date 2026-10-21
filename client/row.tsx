@@ -21,6 +21,9 @@ type Props = {
   onTicket: () => void;
   onToggleHide: () => void;
   onHidden: () => void;
+  /** The other side of the trace (FE for a BE issue and vice versa), looked up by the caller. */
+  linkedRows: IssueRow[];
+  onInvestigateLinked: (row: IssueRow) => void;
 };
 
 export function IssueRowView(props: Props) {
@@ -40,13 +43,12 @@ export function IssueRowView(props: Props) {
               {row.firstRelease ? ` · first seen ${row.firstRelease}` : ""}
               {row.lastRelease && !row.isCurrentRelease ? ` · last on ${row.lastRelease}` : ""}
             </Text>
-            {row.links.map((link) => (
-              <Pressable key={link.issueId} accessibilityRole="link" onPress={() => void openExternalUrl(link.permalink)}>
-                <Text style={styles.linkBadge}>
-                  ⇄ {row.side === "FE" ? "BE" : "FE"} {link.shortId} · {link.matched}/{link.sampled} requests
-                </Text>
-              </Pressable>
-            ))}
+            {row.links.length > 0 ? (
+              <Text style={styles.linkBadge}>
+                ⇄ {otherSide(row)}
+                {row.links.length > 1 ? ` ×${row.links.length}` : ""}
+              </Text>
+            ) : null}
             {row.rp ? <Text style={row.rp.done ? styles.badge : styles.badgeWarning}>{`${row.rp.key} ${row.rp.status}`}</Text> : null}
             {row.spikingKnown ? <Text style={styles.badgeDanger}>known, but spiking</Text> : null}
             {row.hiddenReason ? <Text style={styles.badge}>{HIDDEN_LABELS[row.hiddenReason]}</Text> : null}
@@ -66,65 +68,71 @@ export function IssueRowView(props: Props) {
       </Pressable>
       {props.hideOpen ? <HideMenu row={row} nextRelease={props.nextRelease} styles={styles} onDone={props.onHidden} /> : null}
       {props.expanded ? (
-        <View style={styles.detail}>
-          <View style={styles.detailColumn}>
-            <Text style={styles.label}>Realms impacted (sampled events)</Text>
-            {row.realms.slice(0, MAX_REALMS).map((realm) => (
-              <Text key={realm.name} style={styles.text}>
-                {realm.name} · {realm.events} ev
-              </Text>
-            ))}
-            {realmCount > MAX_REALMS ? <Text style={styles.muted}>+{realmCount - MAX_REALMS} more</Text> : null}
-            {realmCount === 0 ? <Text style={styles.muted}>No realm in the sampled events</Text> : null}
-          </View>
-          <View style={styles.detailColumn}>
-            <Text style={styles.label}>Full trace · matched by RequestId</Text>
-            {row.links.length === 0 ? (
-              <Text style={styles.muted}>
-                No {row.side === "FE" ? "backend" : "frontend"} issue shares a request id with this one's sampled events
-              </Text>
-            ) : null}
-            {row.links.map((link) => (
-              <View key={link.issueId} style={{ gap: 1 }}>
-                <Pressable accessibilityRole="link" onPress={() => void openExternalUrl(link.permalink)}>
-                  <Text style={[styles.text, { textDecorationLine: "underline" }]} numberOfLines={1}>
-                    {row.side === "FE" ? "BE" : "FE"} {link.shortId}: {link.title}
+        <View style={styles.detailBox}>
+          <View style={styles.detail}>
+            <View style={styles.detailColumn}>
+              <Text style={styles.label}>Where</Text>
+              <Text style={styles.text}>{row.culprit || "—"}</Text>
+              {row.topFrame ? <Text style={styles.code}>{row.topFrame}</Text> : null}
+              <Text style={[styles.label, { marginTop: 6 }]}>Realms impacted (sampled events)</Text>
+              {row.realms.slice(0, MAX_REALMS).map((realm) => (
+                <Text key={realm.name} style={styles.text}>
+                  {realm.name} · {realm.events} ev
+                </Text>
+              ))}
+              {realmCount > MAX_REALMS ? <Text style={styles.muted}>+{realmCount - MAX_REALMS} more</Text> : null}
+              {realmCount === 0 ? <Text style={styles.muted}>No realm in the sampled events</Text> : null}
+            </View>
+            <View style={styles.detailColumn}>
+              <Text style={styles.label}>Investigation</Text>
+              {row.triage?.verdict ? (
+                <>
+                  <Text style={styles.text}>{row.triage.verdict}</Text>
+                  {(row.triage.reproSteps ?? []).map((step, index) => (
+                    <Text key={index} style={styles.muted}>
+                      {index + 1}. {step}
+                    </Text>
+                  ))}
+                  <Text style={styles.muted}>
+                    confidence: {row.triage.confidence ?? "?"}
+                    {row.triage.fixedIn ? ` · fixed in ${row.triage.fixedIn}` : ""}
                   </Text>
-                </Pressable>
-                <Text style={styles.muted} numberOfLines={2}>
-                  {link.matched} of {link.sampled} sampled requests · {link.requestIds.slice(0, 3).join(", ")}
-                  {link.requestIds.length > 3 ? ` +${link.requestIds.length - 3}` : ""}
+                </>
+              ) : (
+                <Text style={styles.muted}>Not investigated yet</Text>
+              )}
+            </View>
+          </View>
+          {row.links.map((link) => {
+            const linked = props.linkedRows.find((candidate) => candidate.id === link.issueId);
+            return (
+              <View key={link.issueId} style={styles.linkedCard}>
+                <View style={styles.row}>
+                  <Text style={[styles.linkBadge, { marginRight: 8 }]}>⇄ {otherSide(row)}</Text>
+                  <Text style={[styles.strong, { flex: 1 }]}>{link.title}</Text>
+                  <SmallButton label="🔍" hint="Investigate this side" disabled={!props.agentsAvailable || !linked} onPress={() => linked && props.onInvestigateLinked(linked)} styles={styles} />
+                  <SmallButton label="↗" hint="Open in Sentry" onPress={() => void openExternalUrl(link.permalink)} styles={styles} />
+                </View>
+                <Text style={styles.muted}>
+                  {link.shortId}
+                  {linked ? ` · ${linked.area} · ${linked.count} events · ${linked.realms.length} realms${linked.firstRelease ? ` · first seen ${linked.firstRelease}` : ""}` : ""}
+                </Text>
+                {linked?.culprit ? <Text style={styles.text}>{linked.culprit}</Text> : null}
+                {linked?.topFrame ? <Text style={styles.code}>{linked.topFrame}</Text> : null}
+                <Text style={styles.muted}>
+                  Same request in {link.matched} of {link.sampled} sampled events · RequestId {link.requestIds.slice(0, 2).join(", ")}
+                  {link.requestIds.length > 2 ? ` +${link.requestIds.length - 2}` : ""}
                 </Text>
               </View>
-            ))}
-          </View>
-          <View style={styles.detailColumn}>
-            <Text style={styles.label}>Investigation</Text>
-            {row.triage?.verdict ? (
-              <>
-                <Text style={styles.text}>{row.triage.verdict}</Text>
-                {(row.triage.reproSteps ?? []).map((step, index) => (
-                  <Text key={index} style={styles.muted}>
-                    {index + 1}. {step}
-                  </Text>
-                ))}
-                <Text style={styles.muted}>
-                  confidence: {row.triage.confidence ?? "?"}
-                  {row.triage.fixedIn ? ` · fixed in ${row.triage.fixedIn}` : ""}
-                </Text>
-              </>
-            ) : (
-              <Text style={styles.muted}>Not investigated yet</Text>
-            )}
-            <Pressable accessibilityRole="link" onPress={() => void openExternalUrl(row.permalink)}>
-              <Text style={[styles.text, { textDecorationLine: "underline" }]}>Open {row.shortId} in Sentry</Text>
-            </Pressable>
-          </View>
+            );
+          })}
         </View>
       ) : null}
     </View>
   );
 }
+
+const otherSide = (row: IssueRow) => (row.side === "FE" ? "BE" : "FE");
 
 const HIDDEN_LABELS: Record<NonNullable<IssueRow["hiddenReason"]>, string> = {
   known: "known",

@@ -42,6 +42,7 @@ function classifyOne(issue: SentryIssue, input: ClassifyInput, ruleHits: Map<str
   const side = sideOf(issue.project.slug);
   const current = (side === "FE" ? input.currentRelease.FE : side === "BE" ? input.currentRelease.BE : null)?.version ?? null;
   const lastRelease = maxVersion(facts.map((fact) => fact.release));
+  const frame = facts.find((fact) => fact.topFrame)?.topFrame;
 
   const row: IssueRow = {
     id: issue.id,
@@ -51,7 +52,8 @@ function classifyOne(issue: SentryIssue, input: ClassifyInput, ruleHits: Map<str
     culprit: issue.culprit,
     project: issue.project.slug,
     side,
-    area: areaOf(facts.find((fact) => fact.topFrame)?.topFrame?.path ?? issue.culprit),
+    area: areaOf(frame?.path ?? issue.culprit),
+    ...(frame ? { topFrame: `${frame.path}:${frame.line}` } : {}),
     permalink: issue.permalink,
     firstSeen: issue.firstSeen,
     lastSeen: issue.lastSeen,
