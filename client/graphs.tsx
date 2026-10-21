@@ -1,12 +1,17 @@
-import { Pressable, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { headlineCounts, heatmapRows } from "../shared/insights";
 import type { Bucket, Graphs, IssueRow } from "../shared/model";
 import type { Styles } from "./styles";
 
 const BAR_HEIGHT = 90;
+// The panel sits in the fixed header: capped, so an open panel never squeezes out the issue list.
+const MAX_PANEL_HEIGHT = 360;
 
 type Props = {
-  graphs: Graphs;
+  /** Undefined until the panel is first opened and its data has loaded. */
+  graphs: Graphs | undefined;
+  loading: boolean;
+  error: unknown;
   /** The rows after filters: issue counts and the heatmap follow the filters, event rates are all prod. */
   rows: IssueRow[];
   deployAt: string | null;
@@ -16,18 +21,33 @@ type Props = {
   styles: Styles;
 };
 
-export function GraphsPanel({ graphs, rows, deployAt, open, onToggle, onCell, styles }: Props) {
+export function GraphsPanel({ graphs, loading, error, rows, deployAt, open, onToggle, onCell, styles }: Props) {
+  return (
+    <View style={styles.panel}>
+      <Pressable accessibilityRole="button" onPress={onToggle}>
+        <Text style={styles.label}>
+          {open ? "▾" : "▸"} Graphs (g){open && loading ? " · loading…" : ""}
+        </Text>
+      </Pressable>
+      {open && error ? <Text style={styles.error}>{error instanceof Error ? error.message : String(error)}</Text> : null}
+      {open && graphs ? (
+        <ScrollView style={{ maxHeight: MAX_PANEL_HEIGHT }}>
+          <GraphsBody graphs={graphs} rows={rows} deployAt={deployAt} onCell={onCell} styles={styles} />
+        </ScrollView>
+      ) : null}
+    </View>
+  );
+}
+
+function GraphsBody({ graphs, rows, deployAt, onCell, styles }: Pick<Props, "rows" | "deployAt" | "onCell" | "styles"> & { graphs: Graphs }) {
   const counts = headlineCounts(rows, deployAt ?? new Date(Date.now() - 86_400_000).toISOString());
   const { eventsPerHourNow, eventsPerHourBefore } = graphs.headline;
   const change = eventsPerHourBefore > 0 ? Math.round(((eventsPerHourNow - eventsPerHourBefore) / eventsPerHourBefore) * 100) : null;
   const heatmap = heatmapRows(rows);
 
   return (
-    <View style={styles.panel}>
-      <Pressable accessibilityRole="button" onPress={onToggle}>
-        <Text style={styles.label}>{open ? "▾" : "▸"} Graphs (g)</Text>
-      </Pressable>
-      {open ? (
+    <View style={{ gap: 8 }}>
+      {(
         <>
           <View style={styles.wrap}>
             <Tile value={String(counts.newSinceDeploy)} label={deployAt ? "new issues since deploy" : "new issues, last 24h"} styles={styles} />
@@ -81,7 +101,7 @@ export function GraphsPanel({ graphs, rows, deployAt, open, onToggle, onCell, st
             {heatmap.length === 0 ? <Text style={styles.muted}>No visible issues</Text> : null}
           </View>
         </>
-      ) : null}
+      )}
     </View>
   );
 }

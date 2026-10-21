@@ -3,6 +3,9 @@ import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
 export type Colors = PluginSurfaceProps["theme"]["colors"];
 export type Styles = ReturnType<typeof createStyles>;
 
+/** Widths shared by the column header and the rows, so the numbers line up. */
+export const COLUMN = { trend: 64, count: 60, owner: 110, actions: 112 };
+
 export function createStyles(colors: Colors, compact: boolean) {
   const chip = {
     fontSize: 12,
@@ -16,7 +19,25 @@ export function createStyles(colors: Colors, compact: boolean) {
   return {
     colors,
     screen: { flex: 1, backgroundColor: colors.surface0 },
-    content: { padding: compact ? 12 : 20, gap: 12 },
+    // Everything above the issue list stays put; only the list scrolls.
+    fixed: { paddingHorizontal: compact ? 12 : 20, paddingTop: compact ? 12 : 16, gap: 10 },
+    list: { flex: 1 },
+    listContent: { paddingHorizontal: compact ? 12 : 20, paddingBottom: 20, gap: 0 },
+    columnHeader: { ...row, gap: 10, paddingVertical: 4, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: colors.border },
+    columnLabel: { color: colors.foregroundMuted, fontSize: 11, textTransform: "uppercase" as const, letterSpacing: 0.5 },
+    tooltip: {
+      position: "absolute" as const,
+      bottom: "100%" as const,
+      right: 0,
+      marginBottom: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 4,
+      minWidth: 150,
+      backgroundColor: colors.foreground,
+      zIndex: 10,
+    },
+    tooltipText: { color: colors.surface0, fontSize: 11 },
     row,
     wrap: { ...row, flexWrap: "wrap" as const, gap: 6 },
     header: { ...row, gap: 10, flexWrap: "wrap" as const },
@@ -48,7 +69,9 @@ export function createStyles(colors: Colors, compact: boolean) {
     issue: { ...row, gap: 10, paddingVertical: 8, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: colors.border },
     issueSelected: { backgroundColor: colors.surface2 },
     issueMain: { flex: 1, gap: 2, minWidth: 0 },
-    count: { width: 56, alignItems: "flex-end" as const },
+    count: { width: COLUMN.count, alignItems: "flex-end" as const },
+    owner: { width: COLUMN.owner },
+    actions: { ...row, width: COLUMN.actions, justifyContent: "flex-end" as const },
     detail: { paddingVertical: 10, paddingHorizontal: 14, borderLeftWidth: 3, borderLeftColor: colors.accent, backgroundColor: colors.surface1, gap: 12, flexDirection: (compact ? "column" : "row") as "column" | "row" },
     detailColumn: { flex: 1, gap: 3 },
     input: { color: colors.foreground, borderWidth: 1, borderColor: colors.border, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, fontSize: 12, minWidth: 160 },

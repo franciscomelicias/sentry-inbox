@@ -25,7 +25,6 @@ export class RulesFileBrokenError extends Error {
 
 export const DEFAULT_PREFS: Prefs = {
   range: "deploy",
-  graphsOpen: true,
   tab: "new",
   filters: DEFAULT_FILTERS,
   savedViews: [],

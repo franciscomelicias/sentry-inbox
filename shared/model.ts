@@ -122,7 +122,6 @@ export type Range = (typeof RANGES)[number];
 
 export const inboxSchema = z.object({
   rows: z.array(issueRowSchema),
-  graphs: graphsSchema,
   deploy: z.object({ version: z.string(), at: z.string() }).nullable(),
   rangeStart: z.string(),
   rules: z.array(z.object({ rule: ruleSchema, hits: z.number(), dead: z.boolean() })),
@@ -160,7 +159,6 @@ export const DEFAULT_FILTERS: Filters = {
 
 export const prefsSchema = z.object({
   range: z.enum(RANGES),
-  graphsOpen: z.boolean(),
   tab: z.enum(BUCKETS),
   filters: filtersSchema,
   savedViews: z.array(z.object({ name: z.string(), filters: filtersSchema, range: z.enum(RANGES).optional() })),

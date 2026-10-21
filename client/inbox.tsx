@@ -5,11 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { applyFilters } from "../shared/filter";
 import type { Bucket, Inbox, IssueRow, Prefs, Range } from "../shared/model";
-import { getInboxRpc, getPrefsRpc, setPrefsRpc } from "../shared/rpc";
+import { getGraphsRpc, getInboxRpc, getPrefsRpc, setPrefsRpc } from "../shared/rpc";
 import { useAgents } from "./agents";
 import { FilterBar } from "./filters";
 import { GraphsPanel } from "./graphs";
-import { IssueRowView, SmallButton } from "./row";
+import { ColumnHeader, IssueRowView, SmallButton } from "./row";
 import { RulesPanel } from "./rules-panel";
 import { createStyles, type Styles } from "./styles";
 import { listenShortcuts } from "./web";
@@ -63,6 +63,15 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [hideId, setHideId] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  // Closed on every open, and its data is only fetched once opened.
+  const [graphsOpen, setGraphsOpen] = useState(false);
+  const fetchGraphs = useRpc(getGraphsRpc);
+  const graphs = useQuery({
+    queryKey: ["sentry-inbox-graphs", range],
+    queryFn: () => fetchGraphs({ range }),
+    enabled: graphsOpen && prefs !== null,
+    staleTime: STALE_MS,
+  });
   // i and t start agents: Paseo doesn't tell a surface whether it's visible, so a key needs a confirming second press.
   const [armed, setArmed] = useState<{ key: string; id: string; at: number } | null>(null);
   const searchRef = useRef<TextInput>(null);
@@ -88,7 +97,7 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
           return true;
         }
         if (key === "g") {
-          updatePrefs({ graphsOpen: !prefs?.graphsOpen });
+          setGraphsOpen((open) => !open);
           return true;
         }
         if (key === "?") {
@@ -110,13 +119,14 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
         else return false;
         return true;
       }),
-    [tabRows, selectedId, prefs?.graphsOpen, agents, armed],
+    [tabRows, selectedId, agents, armed],
   );
 
   if (prefs === null) return <Text style={[styles.muted, { padding: 20 }]}>Loading…</Text>;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.screen}>
+      <View style={styles.fixed}>
       <View style={styles.header}>
         <Text style={styles.title}>Sentry inbox</Text>
         {(Object.keys(RANGE_LABELS) as Range[]).map((value) => (
@@ -144,11 +154,13 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
       {inbox.data ? (
         <>
           <GraphsPanel
-            graphs={inbox.data.graphs}
+            graphs={graphs.data}
+            loading={graphs.isFetching}
+            error={graphs.error}
             rows={prefs.filters.cell ? applyFilters(allRows, { ...prefs.filters, cell: null }) : rows}
             deployAt={inbox.data.deploy?.at ?? null}
-            open={prefs.graphsOpen}
-            onToggle={() => updatePrefs({ graphsOpen: !prefs.graphsOpen })}
+            open={graphsOpen}
+            onToggle={() => setGraphsOpen((open) => !open)}
             onCell={(issueId, day, bucket) => updatePrefs({ tab: bucket, filters: { ...prefs.filters, cell: { issueId, day } } })}
             styles={styles}
           />
@@ -167,8 +179,16 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
               );
             })}
           </View>
+          <ColumnHeader styles={styles} />
+        </>
+      ) : null}
+      </View>
+
+      <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+      {inbox.data ? (
+        <>
           {tab === "hidden" ? <RulesPanel inbox={inbox.data} styles={styles} /> : null}
-          {tabRows.length === 0 ? <Text style={styles.muted}>Nothing here.</Text> : null}
+          {tabRows.length === 0 ? <Text style={[styles.muted, { padding: 8 }]}>Nothing here.</Text> : null}
           {tabRows.map((row) => (
             <IssueRowView
               key={row.id}
@@ -200,7 +220,8 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
         ))}
         {showHelp ? null : <Text style={styles.muted}>Press ? for keyboard shortcuts</Text>}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 

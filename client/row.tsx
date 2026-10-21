@@ -1,8 +1,9 @@
 import { openExternalUrl } from "@getpaseo/plugin/client";
+import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { IssueRow } from "../shared/model";
 import { HideMenu } from "./hide-menu";
-import type { Styles } from "./styles";
+import { COLUMN, type Styles } from "./styles";
 
 const MAX_REALMS = 5;
 
@@ -56,14 +57,15 @@ export function IssueRowView(props: Props) {
             {row.hiddenReason ? <Text style={styles.badge}>{HIDDEN_LABELS[row.hiddenReason]}</Text> : null}
           </View>
         </View>
-        <Count value={row.count} label="events" styles={styles} />
-        <Count value={realmCount} label="realms" styles={styles} />
-        {row.userCount > 0 ? <Count value={row.userCount} label="users" styles={styles} /> : null}
-        {row.owner ? <Text style={[styles.muted, { width: 90 }]} numberOfLines={1}>{row.owner}</Text> : null}
-        <View style={styles.row}>
-          <SmallButton label="🔍" hint="Investigate (i)" disabled={!props.agentsAvailable} onPress={props.onInvestigate} styles={styles} />
-          <SmallButton label="🎫" hint="Ticket (t)" disabled={!props.agentsAvailable} onPress={props.onTicket} styles={styles} />
-          <SmallButton label="🙈" hint="Hide… (h)" onPress={props.onToggleHide} styles={styles} />
+        <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{row.count}</Text>
+        <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{realmCount}</Text>
+        <Text style={[styles.muted, styles.owner]} numberOfLines={1}>
+          {row.owner ?? "—"}
+        </Text>
+        <View style={styles.actions}>
+          <SmallButton label="🔍" hint="Investigate: AI analysis + repro steps (i i)" disabled={!props.agentsAvailable} onPress={props.onInvestigate} styles={styles} />
+          <SmallButton label="🎫" hint="Create an RP ticket via lead:sentry (t t)" disabled={!props.agentsAvailable} onPress={props.onTicket} styles={styles} />
+          <SmallButton label="🙈" hint="Hide, snooze or mark as known (h)" onPress={props.onToggleHide} styles={styles} />
         </View>
       </Pressable>
       {props.hideOpen ? <HideMenu row={row} nextRelease={props.nextRelease} styles={styles} onDone={props.onHidden} /> : null}
@@ -115,11 +117,16 @@ const HIDDEN_LABELS: Record<NonNullable<IssueRow["hiddenReason"]>, string> = {
   foldedIntoBe: "shown in its BE row",
 };
 
-function Count({ value, label, styles }: { value: number; label: string; styles: Styles }) {
+/** Column titles above the list; widths match IssueRowView's right-hand columns. */
+export function ColumnHeader({ styles }: { styles: Styles }) {
   return (
-    <View style={styles.count}>
-      <Text style={styles.strong}>{value}</Text>
-      <Text style={styles.muted}>{label}</Text>
+    <View style={styles.columnHeader}>
+      <Text style={[styles.columnLabel, { width: COLUMN.trend }]}>14 days</Text>
+      <Text style={[styles.columnLabel, { flex: 1 }]}>Issue</Text>
+      <Text style={[styles.columnLabel, styles.count, { textAlign: "right" }]}>Events</Text>
+      <Text style={[styles.columnLabel, styles.count, { textAlign: "right" }]}>Realms</Text>
+      <Text style={[styles.columnLabel, styles.owner]}>Owner</Text>
+      <Text style={[styles.columnLabel, styles.actions, { textAlign: "right" }]}>Actions</Text>
     </View>
   );
 }
@@ -139,15 +146,23 @@ export function SmallButton({
   onPress: () => void;
   styles: Styles;
 }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={hint ?? label}
       disabled={disabled}
       onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       style={[primary ? styles.buttonPrimary : styles.button, { marginLeft: 4 }, disabled ? styles.disabled : null]}
     >
       <Text style={primary ? styles.buttonPrimaryText : styles.buttonText}>{label}</Text>
+      {hovered && hint ? (
+        <View style={styles.tooltip} pointerEvents="none">
+          <Text style={styles.tooltipText}>{hint}</Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }

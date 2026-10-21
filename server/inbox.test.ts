@@ -56,6 +56,12 @@ describe("getInbox", () => {
     expect(sentry.listIssues).toHaveBeenCalledTimes(1);
   });
 
+  it("loads the issue list without the graph-only Sentry query", async () => {
+    vi.mocked(sentry.hourlyTotals).mockClear();
+    await getInbox({ range: "24h", force: true });
+    expect(sentry.hourlyTotals).not.toHaveBeenCalled();
+  });
+
   it("still loads when one issue's events can't be fetched, and says so", async () => {
     vi.mocked(sentry.latestEvents).mockImplementation(async (id) => {
       if (id === "2") throw new Error("Sentry 404 on /issues/2/events/");

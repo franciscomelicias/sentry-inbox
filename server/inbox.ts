@@ -1,4 +1,4 @@
-import type { EventFacts, Inbox, Range } from "../shared/model";
+import type { EventFacts, Graphs, Inbox, Range } from "../shared/model";
 import { ownerOf } from "./blame";
 import { classifyIssues } from "./classify";
 import { extractFacts } from "./facts";
@@ -34,13 +34,14 @@ type SentryData = {
   issues: SentryIssue[];
   facts: Map<string, EventFacts[]>;
   hourly24: Map<string, number[]>;
-  hourly: { at: string; count: number }[];
+  projectIds: string[];
   fe: Release[];
   be: Release[];
   errors: string[];
 };
 
 let latest: { at: number; data: Promise<SentryData> } | null = null;
+let latestHourly: { at: number; hourly: Promise<{ at: string; count: number }[]> } | null = null;
 let projects: Promise<{ slug: string; id: string }[]> | null = null;
 
 export async function getInbox({ range, force }: { range: Range; force: boolean }): Promise<Inbox> {
@@ -80,10 +81,10 @@ async function fetchSentry(): Promise<SentryData> {
     const id = prod.find((project) => project.slug === slug)?.id;
     return id ? listDeployedReleases(id) : Promise.resolve([]);
   };
-  const [issues, fe, be, hourly] = await Promise.all([listIssues(projectIds), releasesOf(FE_PROJECT), releasesOf(BE_PROJECT), hourlyTotals(projectIds)]);
+  const [issues, fe, be] = await Promise.all([listIssues(projectIds), releasesOf(FE_PROJECT), releasesOf(BE_PROJECT)]);
   const [{ facts, failed }, hourly24] = await Promise.all([factsFor(issues), stats24h(issues.map((issue) => issue.id), projectIds)]);
   const errors = failed > 0 ? [`${failed} issue(s) without fresh events (Sentry errors or rate limit): realms, links and stale-FE use older or no samples for them`] : [];
-  return { fetchedAt: new Date().toISOString(), issues, facts, hourly24, hourly, fe, be, errors };
+  return { fetchedAt: new Date().toISOString(), issues, facts, hourly24, projectIds, fe, be, errors };
 }
 
 async function assemble(data: SentryData, range: Range): Promise<Inbox> {
@@ -103,7 +104,6 @@ async function assemble(data: SentryData, range: Range): Promise<Inbox> {
     return new Map();
   });
 
-  const since = new Date(now.getTime() - 14 * DAY_MS).toISOString();
   const releases = [...data.fe.map((release) => ({ ...release, side: "FE" as const })), ...data.be.map((release) => ({ ...release, side: "BE" as const }))];
   const { rows, ruleHits } = classifyIssues({
     issues: data.issues,
@@ -128,12 +128,8 @@ async function assemble(data: SentryData, range: Range): Promise<Inbox> {
     },
   );
 
-  // FE and BE ship the same version numbers: one marker per version, at its first prod event.
-  const markers = [...new Map(releases.filter((release) => release.at >= since).sort((a, b) => b.at.localeCompare(a.at)).map((release) => [release.version, { version: release.version, at: release.at }])).values()].sort((a, b) => a.at.localeCompare(b.at));
-
   return {
     rows,
-    graphs: buildGraphs({ rows, hourly: data.hourly, hourly24: data.hourly24, releases: markers, deployAt: deploy?.at ?? null, now: now.toISOString() }),
     deploy,
     rangeStart,
     rules: rulesFile.rules.map((rule) => {
@@ -145,6 +141,32 @@ async function assemble(data: SentryData, range: Range): Promise<Inbox> {
     staleSince: null,
     fetchedAt: data.fetchedAt,
   };
+}
+
+export async function getGraphs({ range }: { range: Range }): Promise<Graphs> {
+  const data = await loadSentry(false);
+  const [inbox, hourly] = await Promise.all([assemble(data, range), loadHourly(data.projectIds)]);
+  const since = new Date(Date.now() - 14 * DAY_MS).toISOString();
+  // FE and BE ship the same version numbers: one marker per version, at its first prod event.
+  const markers = new Map([...data.fe, ...data.be].filter((release) => release.at >= since).sort((a, b) => b.at.localeCompare(a.at)).map((release) => [release.version, release]));
+  return buildGraphs({
+    rows: inbox.rows,
+    hourly,
+    hourly24: data.hourly24,
+    releases: [...markers.values()].sort((a, b) => a.at.localeCompare(b.at)),
+    deployAt: inbox.deploy?.at ?? null,
+    now: new Date().toISOString(),
+  });
+}
+
+function loadHourly(projectIds: string[]) {
+  if (latestHourly && Date.now() - latestHourly.at < FRESH_MS) return latestHourly.hourly;
+  const hourly = hourlyTotals(projectIds);
+  latestHourly = { at: Date.now(), hourly };
+  hourly.catch(() => {
+    latestHourly = null;
+  });
+  return hourly;
 }
 
 function rangeStartOf(range: Range, deploy: Release | null, now: Date): string {
