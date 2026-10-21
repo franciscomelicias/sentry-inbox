@@ -41,9 +41,11 @@ export function IssueRowView(props: Props) {
               {row.lastRelease && !row.isCurrentRelease ? ` · last on ${row.lastRelease}` : ""}
             </Text>
             {row.links.map((link) => (
-              <Text key={link.issueId} style={styles.badge}>
-                ⇄ {row.side === "FE" ? "BE" : "FE"} {link.shortId} · {link.matched} of {link.sampled}
-              </Text>
+              <Pressable key={link.issueId} accessibilityRole="link" onPress={() => void openExternalUrl(link.permalink)}>
+                <Text style={styles.linkBadge}>
+                  ⇄ {row.side === "FE" ? "BE" : "FE"} {link.shortId} · {link.matched}/{link.sampled} requests
+                </Text>
+              </Pressable>
             ))}
             {row.rp ? <Text style={row.rp.done ? styles.badge : styles.badgeWarning}>{`${row.rp.key} ${row.rp.status}`}</Text> : null}
             {row.spikingKnown ? <Text style={styles.badgeDanger}>known, but spiking</Text> : null}
@@ -59,6 +61,7 @@ export function IssueRowView(props: Props) {
           <SmallButton label="🔍" hint="Investigate: AI analysis + repro steps (i i)" disabled={!props.agentsAvailable} onPress={props.onInvestigate} styles={styles} />
           <SmallButton label="🎫" hint="Create an RP ticket via lead:sentry (t t)" disabled={!props.agentsAvailable} onPress={props.onTicket} styles={styles} />
           <SmallButton label="🙈" hint="Hide, snooze or mark as known (h)" onPress={props.onToggleHide} styles={styles} />
+          <SmallButton label="↗" hint="Open in Sentry" onPress={() => void openExternalUrl(row.permalink)} styles={styles} />
         </View>
       </Pressable>
       {props.hideOpen ? <HideMenu row={row} nextRelease={props.nextRelease} styles={styles} onDone={props.onHidden} /> : null}
@@ -73,6 +76,27 @@ export function IssueRowView(props: Props) {
             ))}
             {realmCount > MAX_REALMS ? <Text style={styles.muted}>+{realmCount - MAX_REALMS} more</Text> : null}
             {realmCount === 0 ? <Text style={styles.muted}>No realm in the sampled events</Text> : null}
+          </View>
+          <View style={styles.detailColumn}>
+            <Text style={styles.label}>Full trace · matched by RequestId</Text>
+            {row.links.length === 0 ? (
+              <Text style={styles.muted}>
+                No {row.side === "FE" ? "backend" : "frontend"} issue shares a request id with this one's sampled events
+              </Text>
+            ) : null}
+            {row.links.map((link) => (
+              <View key={link.issueId} style={{ gap: 1 }}>
+                <Pressable accessibilityRole="link" onPress={() => void openExternalUrl(link.permalink)}>
+                  <Text style={[styles.text, { textDecorationLine: "underline" }]} numberOfLines={1}>
+                    {row.side === "FE" ? "BE" : "FE"} {link.shortId}: {link.title}
+                  </Text>
+                </Pressable>
+                <Text style={styles.muted} numberOfLines={2}>
+                  {link.matched} of {link.sampled} sampled requests · {link.requestIds.slice(0, 3).join(", ")}
+                  {link.requestIds.length > 3 ? ` +${link.requestIds.length - 3}` : ""}
+                </Text>
+              </View>
+            ))}
           </View>
           <View style={styles.detailColumn}>
             <Text style={styles.label}>Investigation</Text>
@@ -130,6 +154,7 @@ export function GroupRowView({
 }) {
   const first = group.rows[0];
   const areas = [...new Set(group.rows.map((row) => row.area))].join(", ");
+  const linked = group.rows.filter((row) => row.links.length > 0).length;
   return (
     <View>
       <Pressable accessibilityRole="button" onPress={onToggle} style={styles.issue}>
@@ -143,9 +168,12 @@ export function GroupRowView({
               {first.title}
             </Text>
           </View>
-          <Text style={styles.muted}>
-            {first.side} · {areas} · {group.rows.length} Sentry issues with this message
-          </Text>
+          <View style={styles.wrap}>
+            <Text style={styles.muted}>
+              {first.side} · {areas} · {group.rows.length} Sentry issues with this message
+            </Text>
+            {linked > 0 ? <Text style={styles.linkBadge}>⇄ {linked} with a {first.side === "FE" ? "backend" : "frontend"} trace</Text> : null}
+          </View>
         </View>
         <EventsCount count={group.count} styles={styles} />
         <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{group.realmCount}</Text>

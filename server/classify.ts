@@ -165,18 +165,19 @@ export function linkFeBe(rows: IssueRow[], factsByIssue: Map<string, EventFacts[
   const byId = new Map(rows.map((row) => [row.id, row]));
   for (const fe of rows.filter((row) => row.side === "FE")) {
     const facts = factsByIssue.get(fe.id) ?? [];
-    const matches = new Map<string, number>();
+    const matches = new Map<string, string[]>();
     for (const fact of facts) {
       const beId = fact.requestId ? beByRequest.get(fact.requestId) : undefined;
-      if (beId) matches.set(beId, (matches.get(beId) ?? 0) + 1);
+      if (beId && fact.requestId) matches.set(beId, [...(matches.get(beId) ?? []), fact.requestId]);
     }
-    for (const [beId, matched] of matches) {
+    for (const [beId, requestIds] of matches) {
       const be = byId.get(beId)!;
-      be.links.push({ issueId: fe.id, shortId: fe.shortId, title: fe.title, matched, sampled: facts.length });
-      fe.links.push({ issueId: be.id, shortId: be.shortId, title: be.title, matched, sampled: facts.length });
+      const matched = requestIds.length;
+      be.links.push({ issueId: fe.id, shortId: fe.shortId, title: fe.title, permalink: fe.permalink, requestIds, matched, sampled: facts.length });
+      fe.links.push({ issueId: be.id, shortId: be.shortId, title: be.title, permalink: be.permalink, requestIds, matched, sampled: facts.length });
     }
     const [onlyMatch] = matches.values();
-    const fullyMatched = matches.size === 1 && onlyMatch === facts.length && facts.length > 0;
+    const fullyMatched = matches.size === 1 && onlyMatch.length === facts.length && facts.length > 0;
     if (fullyMatched && fe.bucket !== "hidden") {
       fe.bucket = "hidden";
       fe.hiddenReason = "foldedIntoBe";

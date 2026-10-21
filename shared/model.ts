@@ -72,6 +72,9 @@ const linkSchema = z.object({
   issueId: z.string(),
   shortId: z.string(),
   title: z.string(),
+  permalink: z.string(),
+  /** Request ids (ROGERHR-REQUEST-ID) seen on both sides: the proof of the link. */
+  requestIds: z.array(z.string()),
   matched: z.number(),
   sampled: z.number(),
 });

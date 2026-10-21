@@ -4,14 +4,18 @@ export type Colors = PluginSurfaceProps["theme"]["colors"];
 export type Styles = ReturnType<typeof createStyles>;
 
 /** Widths shared by the column header and the rows, so the numbers line up. */
-export const COLUMN = { trend: 64, count: 60, owner: 110, actions: 112 };
+export const COLUMN = { trend: 64, count: 60, owner: 110, actions: 146 };
+
+// Paseo's theme has no blue (its accent is green): fixed colours for the quiet count and the FE↔BE link.
+const QUIET_BLUE = "#3b82f6";
+const LINK_VIOLET = "#8b5cf6";
 
 const BUSY_EVENTS = 100;
 const NOTABLE_EVENTS = 20;
 
 /** Pill colour for an event count: red when busy, orange when notable, accent otherwise. */
 export const eventsColor = (colors: Colors, count: number) =>
-  count >= BUSY_EVENTS ? colors.statusDanger : count >= NOTABLE_EVENTS ? colors.statusWarning : colors.accent;
+  count >= BUSY_EVENTS ? colors.statusDanger : count >= NOTABLE_EVENTS ? colors.statusWarning : QUIET_BLUE;
 
 export function createStyles(colors: Colors, compact: boolean) {
   const chip = {
@@ -78,6 +82,7 @@ export function createStyles(colors: Colors, compact: boolean) {
     issueMain: { flex: 1, gap: 2, minWidth: 0 },
     count: { width: COLUMN.count, alignItems: "flex-end" as const },
     countPill: { minWidth: 34, paddingHorizontal: 7, paddingVertical: 1, borderRadius: 10, overflow: "hidden" as const, textAlign: "center" as const, fontSize: 12, fontWeight: "700" as const, color: "#fff" },
+    linkBadge: { ...chip, fontSize: 11, paddingVertical: 0, fontWeight: "600" as const, color: "#fff", borderColor: LINK_VIOLET, backgroundColor: LINK_VIOLET },
     groupBadge: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: 10, overflow: "hidden" as const, fontSize: 11, fontWeight: "700" as const, marginRight: 6, color: colors.accentForeground, backgroundColor: colors.accent },
     owner: { width: COLUMN.owner },
     actions: { ...row, width: COLUMN.actions, justifyContent: "flex-end" as const },

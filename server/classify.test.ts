@@ -230,7 +230,13 @@ describe("frontend + backend links", () => {
     ]);
     const result = run({ issues: [issue("1"), feIssue("2")], facts });
     expect(rowOf(result, "2")).toMatchObject({ bucket: "hidden", hiddenReason: "foldedIntoBe" });
-    expect(rowOf(result, "1").links[0]).toMatchObject({ issueId: "2", matched: 3, sampled: 3 });
+    expect(rowOf(result, "1").links[0]).toMatchObject({
+      issueId: "2",
+      matched: 3,
+      sampled: 3,
+      permalink: "https://rogerhr.sentry.io/issues/2/",
+      requestIds: ["a", "b", "c"],
+    });
   });
 
   it("keeps a partly matched frontend issue visible and links both ways", () => {
