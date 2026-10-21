@@ -4,7 +4,7 @@ import { Pressable, Text, View } from "react-native";
 import type { IssueGroup } from "../shared/insights";
 import type { IssueRow } from "../shared/model";
 import { GroupHideMenu, HideMenu } from "./hide-menu";
-import { COLUMN, type Styles } from "./styles";
+import { COLUMN, eventsColor, type Styles } from "./styles";
 
 const MAX_REALMS = 5;
 
@@ -50,7 +50,7 @@ export function IssueRowView(props: Props) {
             {row.hiddenReason ? <Text style={styles.badge}>{HIDDEN_LABELS[row.hiddenReason]}</Text> : null}
           </View>
         </View>
-        <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{row.count}</Text>
+        <EventsCount count={row.count} styles={styles} />
         <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{realmCount}</Text>
         <Text style={[styles.muted, styles.owner]} numberOfLines={1}>
           {row.owner ?? "—"}
@@ -136,7 +136,7 @@ export function GroupRowView({
         <Spark daily={group.daily} hot={group.rows.some((row) => row.bucket === "spiking" || row.bucket === "new")} styles={styles} />
         <View style={styles.issueMain}>
           <View style={styles.row}>
-            <Text style={[styles.badge, { marginRight: 6 }]}>
+            <Text style={styles.groupBadge}>
               {open ? "▾" : "▸"} ×{group.rows.length}
             </Text>
             <Text style={[styles.strong, { flex: 1 }]} numberOfLines={1}>
@@ -147,7 +147,7 @@ export function GroupRowView({
             {first.side} · {areas} · {group.rows.length} Sentry issues with this message
           </Text>
         </View>
-        <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{group.count}</Text>
+        <EventsCount count={group.count} styles={styles} />
         <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{group.realmCount}</Text>
         <Text style={[styles.muted, styles.owner]}>—</Text>
         <View style={styles.actions}>
@@ -156,6 +156,14 @@ export function GroupRowView({
       </Pressable>
       {hideOpen ? <GroupHideMenu title={first.title} project={first.project} size={group.rows.length} styles={styles} onDone={onToggleHide} /> : null}
       {open ? <View style={{ marginLeft: 16, borderLeftWidth: 2, borderLeftColor: styles.colors.border }}>{children}</View> : null}
+    </View>
+  );
+}
+
+function EventsCount({ count, styles }: { count: number; styles: Styles }) {
+  return (
+    <View style={styles.count}>
+      <Text style={[styles.countPill, { backgroundColor: eventsColor(styles.colors, count) }]}>{count}</Text>
     </View>
   );
 }
