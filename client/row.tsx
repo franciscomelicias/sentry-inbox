@@ -1,8 +1,9 @@
 import { openExternalUrl } from "@getpaseo/plugin/client";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import type { IssueGroup } from "../shared/insights";
 import type { IssueRow } from "../shared/model";
-import { HideMenu } from "./hide-menu";
+import { GroupHideMenu, HideMenu } from "./hide-menu";
 import { COLUMN, type Styles } from "./styles";
 
 const MAX_REALMS = 5;
@@ -24,19 +25,11 @@ type Props = {
 
 export function IssueRowView(props: Props) {
   const { row, styles } = props;
-  const max = Math.max(1, ...row.daily);
   const realmCount = row.realms.length;
   return (
     <View>
       <Pressable accessibilityRole="button" onPress={props.onSelect} style={[styles.issue, props.selected ? styles.issueSelected : null]}>
-        <View style={styles.spark}>
-          {row.daily.map((count, index) => (
-            <View
-              key={index}
-              style={{ flex: 1, height: Math.max(1, (count / max) * 18), backgroundColor: row.bucket === "spiking" || row.bucket === "new" ? styles.colors.statusDanger : styles.colors.foregroundMuted }}
-            />
-          ))}
-        </View>
+        <Spark daily={row.daily} hot={row.bucket === "spiking" || row.bucket === "new"} styles={styles} />
         <View style={styles.issueMain}>
           <Text style={styles.strong} numberOfLines={1}>
             {row.title}
@@ -116,6 +109,67 @@ const HIDDEN_LABELS: Record<NonNullable<IssueRow["hiddenReason"]>, string> = {
   staleFe: "stale FE",
   foldedIntoBe: "shown in its BE row",
 };
+
+/** One line for identical errors; opens to the individual Sentry issues, rendered by the caller as `children`. */
+export function GroupRowView({
+  group,
+  open,
+  hideOpen,
+  onToggle,
+  onToggleHide,
+  styles,
+  children,
+}: {
+  group: IssueGroup;
+  open: boolean;
+  hideOpen: boolean;
+  onToggle: () => void;
+  onToggleHide: () => void;
+  styles: Styles;
+  children: React.ReactNode;
+}) {
+  const first = group.rows[0];
+  const areas = [...new Set(group.rows.map((row) => row.area))].join(", ");
+  return (
+    <View>
+      <Pressable accessibilityRole="button" onPress={onToggle} style={styles.issue}>
+        <Spark daily={group.daily} hot={group.rows.some((row) => row.bucket === "spiking" || row.bucket === "new")} styles={styles} />
+        <View style={styles.issueMain}>
+          <View style={styles.row}>
+            <Text style={[styles.badge, { marginRight: 6 }]}>
+              {open ? "▾" : "▸"} ×{group.rows.length}
+            </Text>
+            <Text style={[styles.strong, { flex: 1 }]} numberOfLines={1}>
+              {first.title}
+            </Text>
+          </View>
+          <Text style={styles.muted}>
+            {first.side} · {areas} · {group.rows.length} Sentry issues with this message
+          </Text>
+        </View>
+        <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{group.count}</Text>
+        <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{group.realmCount}</Text>
+        <Text style={[styles.muted, styles.owner]}>—</Text>
+        <View style={styles.actions}>
+          <SmallButton label="🙈" hint={`Hide, snooze or mark all ${group.rows.length} as known`} onPress={onToggleHide} styles={styles} />
+        </View>
+      </Pressable>
+      {hideOpen ? <GroupHideMenu title={first.title} project={first.project} size={group.rows.length} styles={styles} onDone={onToggleHide} /> : null}
+      {open ? <View style={{ marginLeft: 16, borderLeftWidth: 2, borderLeftColor: styles.colors.border }}>{children}</View> : null}
+    </View>
+  );
+}
+
+function Spark({ daily, hot, styles }: { daily: number[]; hot: boolean; styles: Styles }) {
+  const max = Math.max(1, ...daily);
+  return (
+    <View style={styles.spark}>
+      {daily.map((count, index) => (
+        <View key={index} style={{ flex: 1, height: Math.max(1, (count / max) * 18), backgroundColor: hot ? styles.colors.statusDanger : styles.colors.foregroundMuted }} />
+      ))}
+    </View>
+  );
+}
 
 /** Column titles above the list; widths match IssueRowView's right-hand columns. */
 export function ColumnHeader({ styles }: { styles: Styles }) {

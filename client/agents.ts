@@ -6,6 +6,8 @@ import { investigatePrompt, leadBrief, ticketMessage } from "../shared/prompts";
 
 const REPO_PATH = "/Users/franciscomelicias/Documents/roger-platform";
 const PROVIDER = "claude/claude-opus-5-5";
+// Same mode paseo-board-dev starts its agents in: no permission prompt on every tool call.
+const AGENT_MODE = "auto";
 const LEAD_LABELS = { source: "sentry-inbox-lead" };
 const LEAD_TITLE = "lead:sentry";
 const WORKSPACE_TITLE = "Sentry inbox";
@@ -40,7 +42,7 @@ export function useAgents(navigation: PluginSurfaceProps["navigation"]) {
   const ensureLead = async (): Promise<{ id: string; workspaceId: string }> => {
     let lead = await findLead();
     if (!lead) {
-      await paseo.agents.create({ config: { provider: PROVIDER }, cwd: REPO_PATH, title: LEAD_TITLE, labels: LEAD_LABELS, prompt: leadBrief() });
+      await paseo.agents.create({ config: { provider: PROVIDER, modeId: AGENT_MODE }, cwd: REPO_PATH, title: LEAD_TITLE, labels: LEAD_LABELS, prompt: leadBrief() });
       lead = await findLead();
     }
     if (!lead?.workspaceId) throw new Error("lead:sentry has no workspace yet; try again in a moment");
@@ -58,7 +60,7 @@ export function useAgents(navigation: PluginSurfaceProps["navigation"]) {
       const { entries } = await paseo.agents.list({ filter: { includeArchived: false } });
       const existing = entries.map((entry) => entry.agent).find((agent) => agent.title === title && agent.workspaceId === lead.workspaceId);
       if (existing) return existing.id;
-      const agent = await paseo.workspaces.ref(lead.workspaceId).agents.create({ config: { provider: PROVIDER }, title, prompt: investigatePrompt(row) });
+      const agent = await paseo.workspaces.ref(lead.workspaceId).agents.create({ config: { provider: PROVIDER, modeId: AGENT_MODE }, title, prompt: investigatePrompt(row) });
       return agent.id;
     });
 

@@ -4,12 +4,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { applyFilters } from "../shared/filter";
+import { groupRows } from "../shared/insights";
 import type { Bucket, Inbox, IssueRow, Prefs, Range } from "../shared/model";
 import { getGraphsRpc, getInboxRpc, getPrefsRpc, setPrefsRpc } from "../shared/rpc";
 import { useAgents } from "./agents";
 import { FilterBar } from "./filters";
 import { GraphsPanel } from "./graphs";
-import { ColumnHeader, IssueRowView, SmallButton } from "./row";
+import { ColumnHeader, GroupRowView, IssueRowView, SmallButton } from "./row";
 import { RulesPanel } from "./rules-panel";
 import { createStyles, type Styles } from "./styles";
 import { listenShortcuts } from "./web";
@@ -62,6 +63,14 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [hideId, setHideId] = useState<string | null>(null);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = (key: string) =>
+    setOpenGroups((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const [showHelp, setShowHelp] = useState(false);
   // Closed on every open, and its data is only fetched once opened.
   const [graphsOpen, setGraphsOpen] = useState(false);
@@ -80,15 +89,18 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
   const rows = prefs ? applyFilters(allRows, prefs.filters) : allRows;
   const tab = prefs?.tab ?? "new";
   const tabRows = rows.filter((row) => row.bucket === tab);
+  const groups = groupRows(tabRows);
+  // j/k walk what's on screen: issues inside a closed group are skipped.
+  const navRows = groups.flatMap((group) => (group.rows.length === 1 || openGroups.has(group.key) ? group.rows : []));
   const nextReleaseOf = (row: IssueRow) => bumpPatch(row.lastRelease ?? inbox.data?.deploy?.version ?? null);
 
   useEffect(
     () =>
       listenShortcuts((key) => {
-        const index = tabRows.findIndex((row) => row.id === selectedId);
-        const selected = tabRows[index];
+        const index = navRows.findIndex((row) => row.id === selectedId);
+        const selected = navRows[index];
         if (key === "j" || key === "k") {
-          const next = tabRows[Math.min(Math.max(index + (key === "j" ? 1 : -1), 0), tabRows.length - 1)];
+          const next = navRows[Math.min(Math.max(index + (key === "j" ? 1 : -1), 0), navRows.length - 1)];
           if (next) setSelectedId(next.id);
           return true;
         }
@@ -119,7 +131,7 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
         else return false;
         return true;
       }),
-    [tabRows, selectedId, agents, armed],
+    [navRows, selectedId, agents, armed],
   );
 
   if (prefs === null) return <Text style={[styles.muted, { padding: 20 }]}>Loading…</Text>;
@@ -189,26 +201,42 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
         <>
           {tab === "hidden" ? <RulesPanel inbox={inbox.data} styles={styles} /> : null}
           {tabRows.length === 0 ? <Text style={[styles.muted, { padding: 8 }]}>Nothing here.</Text> : null}
-          {tabRows.map((row) => (
-            <IssueRowView
-              key={row.id}
-              row={row}
-              styles={styles}
-              selected={row.id === selectedId}
-              expanded={row.id === expandedId}
-              hideOpen={row.id === hideId}
-              nextRelease={nextReleaseOf(row)}
-              agentsAvailable={agents.available && agents.pending === null}
-              onSelect={() => {
-                setSelectedId(row.id);
-                setExpandedId((id) => (id === row.id ? null : row.id));
-              }}
-              onInvestigate={() => void agents.investigate(row)}
-              onTicket={() => void agents.ticket(row)}
-              onToggleHide={() => setHideId((id) => (id === row.id ? null : row.id))}
-              onHidden={() => setHideId(null)}
-            />
-          ))}
+          {groups.map((group) => {
+            const renderRow = (row: IssueRow) => (
+              <IssueRowView
+                key={row.id}
+                row={row}
+                styles={styles}
+                selected={row.id === selectedId}
+                expanded={row.id === expandedId}
+                hideOpen={row.id === hideId}
+                nextRelease={nextReleaseOf(row)}
+                agentsAvailable={agents.available && agents.pending === null}
+                onSelect={() => {
+                  setSelectedId(row.id);
+                  setExpandedId((id) => (id === row.id ? null : row.id));
+                }}
+                onInvestigate={() => void agents.investigate(row)}
+                onTicket={() => void agents.ticket(row)}
+                onToggleHide={() => setHideId((id) => (id === row.id ? null : row.id))}
+                onHidden={() => setHideId(null)}
+              />
+            );
+            if (group.rows.length === 1) return renderRow(group.rows[0]);
+            return (
+              <GroupRowView
+                key={group.key}
+                group={group}
+                open={openGroups.has(group.key)}
+                hideOpen={hideId === group.key}
+                onToggle={() => toggleGroup(group.key)}
+                onToggleHide={() => setHideId((id) => (id === group.key ? null : group.key))}
+                styles={styles}
+              >
+                {group.rows.map(renderRow)}
+              </GroupRowView>
+            );
+          })}
         </>
       ) : null}
 

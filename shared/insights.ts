@@ -20,3 +20,21 @@ export function heatmapRows(rows: IssueRow[]): IssueRow[] {
 }
 
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+
+export type IssueGroup = { key: string; rows: IssueRow[]; count: number; realmCount: number; daily: number[] };
+
+/** Sentry splits one error into many issues (one per endpoint or stack); same side + title = one line here. */
+export function groupRows(rows: IssueRow[]): IssueGroup[] {
+  const groups = new Map<string, IssueRow[]>();
+  for (const row of rows) {
+    const key = `${row.side}\u0000${row.title}`;
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  return [...groups].map(([key, members]) => ({
+    key,
+    rows: members,
+    count: sum(members.map((member) => member.count)),
+    realmCount: new Set(members.flatMap((member) => member.realms.map((realm) => realm.name))).size,
+    daily: members[0].daily.map((_, day) => sum(members.map((member) => member.daily[day] ?? 0))),
+  }));
+}

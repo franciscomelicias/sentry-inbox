@@ -76,3 +76,45 @@ function Item({ label, onPress, styles }: { label: string; onPress: () => void; 
     </Pressable>
   );
 }
+
+/** Hide actions for a group of identical errors: one rule on the exact message, so new copies stay grouped and hidden. */
+export function GroupHideMenu({ title, project, size, styles, onDone }: { title: string; project: string; size: number; styles: Styles; onDone: () => void }) {
+  const addRule = useRpc(addRuleRpc);
+  const queryClient = useQueryClient();
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const match = { project, messageRegex: `^${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$` };
+
+  const save = async (input: RuleInput) => {
+    setError(null);
+    try {
+      await addRule(input);
+      await queryClient.invalidateQueries({ queryKey: ["sentry-inbox"] });
+      onDone();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+  const withReason = (kind: "known" | "ugly") => () =>
+    reason.trim() ? void save({ kind, match, reason: reason.trim() }) : setError("Write the reason first");
+
+  return (
+    <View style={[styles.panel, { marginLeft: 74 }]}>
+      <Text style={styles.label}>Hide all {size} issues with this message</Text>
+      <View style={styles.wrap}>
+        <Item label={`Hide all ${size}`} onPress={() => void save({ kind: "hidden", match, reason: "identical errors hidden from the screen" })} styles={styles} />
+        <Item
+          label={`Snooze all ${SNOOZE_DAYS} days`}
+          onPress={() => void save({ kind: "snooze", match, reason: "snoozed", until: { date: new Date(Date.now() + SNOOZE_DAYS * 86_400_000).toISOString() } })}
+          styles={styles}
+        />
+      </View>
+      <View style={styles.wrap}>
+        <TextInput value={reason} onChangeText={setReason} placeholder="Why is it normal? (e.g. validation error, RP-1234)" placeholderTextColor={styles.colors.foregroundMuted} style={[styles.input, { flex: 1 }]} />
+        <Item label="Mark all as known" onPress={withReason("known")} styles={styles} />
+        <Item label="Known but ugly" onPress={withReason("ugly")} styles={styles} />
+      </View>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+    </View>
+  );
+}
