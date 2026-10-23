@@ -57,4 +57,14 @@ describe("applyFilters", () => {
     const rows = [row("1", { side: "FE", area: "Shifts" }), row("2"), row("3", { side: "FE" })];
     expect(ids(rows, { sides: ["FE"], areas: ["Shifts"] })).toEqual(["1"]);
   });
+
+  it("filters customer-api rows by origin and leaves other rows alone", () => {
+    const rows = [row("b", { origin: "browser" }), row("s", { origin: "script" }), row("m", { origin: "mixed" }), row("fe", { side: "FE" })];
+    expect(ids(rows, { origin: "browser" })).toEqual(["b", "m", "fe"]);
+    expect(ids(rows, { origin: "script" })).toEqual(["s", "m", "fe"]);
+  });
+
+  it("filters by Sentry project", () => {
+    expect(ids([row("1", { project: "roger-public-api-prod" }), row("2")], { projects: ["roger-public-api-prod"] })).toEqual(["1"]);
+  });
 });

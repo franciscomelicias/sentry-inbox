@@ -4,7 +4,8 @@ import { Pressable, Text, View } from "react-native";
 import type { IssueGroup } from "../shared/insights";
 import type { IssueRow } from "../shared/model";
 import { GroupHideMenu, HideMenu } from "./hide-menu";
-import { COLUMN, eventsColor, type Styles } from "./styles";
+import { serviceOf } from "../shared/areas";
+import { COLUMN, eventsColor, serviceColor, type Styles } from "./styles";
 
 const MAX_REALMS = 5;
 
@@ -38,8 +39,9 @@ export function IssueRowView(props: Props) {
             {row.title}
           </Text>
           <View style={styles.wrap}>
+            <ServiceBadge project={row.project} styles={styles} />
             <Text style={styles.muted}>
-              {row.side} · {row.area}
+              {row.area}
               {row.firstRelease ? ` · first seen ${row.firstRelease}` : ""}
               {row.lastRelease && !row.isCurrentRelease ? ` · last on ${row.lastRelease}` : ""}
             </Text>
@@ -49,6 +51,8 @@ export function IssueRowView(props: Props) {
                 {row.links.length > 1 ? ` ×${row.links.length}` : ""}
               </Text>
             ) : null}
+            {row.origin === "script" ? <Text style={styles.badgeWarning}>🤖 script</Text> : null}
+            {row.origin === "mixed" ? <Text style={styles.badgeWarning}>🤖 script + browser</Text> : null}
             {row.rp ? <Text style={row.rp.done ? styles.badge : styles.badgeWarning}>{`${row.rp.key} ${row.rp.status}`}</Text> : null}
             {row.spikingKnown ? <Text style={styles.badgeDanger}>known, but spiking</Text> : null}
             {row.hiddenReason ? <Text style={styles.badge}>{HIDDEN_LABELS[row.hiddenReason]}</Text> : null}
@@ -177,8 +181,11 @@ export function GroupRowView({
             </Text>
           </View>
           <View style={styles.wrap}>
+            {[...new Set(group.rows.map((row) => row.project))].map((project) => (
+              <ServiceBadge key={project} project={project} styles={styles} />
+            ))}
             <Text style={styles.muted}>
-              {first.side} · {areas} · {group.rows.length} Sentry issues with this message
+              {areas} · {group.rows.length} Sentry issues with this message
             </Text>
             {linked > 0 ? <Text style={styles.linkBadge}>⇄ {linked} with a {first.side === "FE" ? "backend" : "frontend"} trace</Text> : null}
           </View>
@@ -194,6 +201,10 @@ export function GroupRowView({
       {open ? <View style={{ marginLeft: 16, borderLeftWidth: 2, borderLeftColor: styles.colors.border }}>{children}</View> : null}
     </View>
   );
+}
+
+export function ServiceBadge({ project, styles }: { project: string; styles: Styles }) {
+  return <Text style={[styles.serviceBadge, { backgroundColor: serviceColor(project) }]}>{serviceOf(project)}</Text>;
 }
 
 function EventsCount({ count, styles }: { count: number; styles: Styles }) {

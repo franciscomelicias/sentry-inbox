@@ -272,6 +272,19 @@ describe("where it was thrown", () => {
   });
 });
 
+describe("origin", () => {
+  const originOf = (feVersions: (string | null)[], project = "roger-customer-api-prod") =>
+    rowOf(run({ issues: [issue("1", { project: { id: "1", slug: project } })], facts: new Map([["1", feVersions.map((feVersion) => fact("1", { feVersion }))]]) }), "1").origin;
+
+  it("is browser, script or mixed from the frontend version header", () => {
+    expect([originOf(["84.2.0"]), originOf([null]), originOf(["84.2.0", null])]).toEqual(["browser", "script", "mixed"]);
+  });
+
+  it("is only set on customer-api issues", () => {
+    expect(originOf([null], "roger-public-api-prod")).toBeUndefined();
+  });
+});
+
 describe("realms and releases", () => {
   it("counts sampled events per realm, most first", () => {
     const facts = new Map([["1", [fact("1", { realm: "b" }), fact("1", { realm: "a" }), fact("1", { realm: "a" })]]]);

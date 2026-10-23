@@ -5,12 +5,15 @@ export function applyFilters(rows: IssueRow[], filters: Filters): IssueRow[] {
   return rows.filter((row) => {
     const sideOk = filters.sides.length === 0 || filters.sides.includes(row.side);
     const areaOk = filters.areas.length === 0 || filters.areas.includes(row.area);
+    const projectOk = filters.projects.length === 0 || filters.projects.includes(row.project);
     const releaseOk = filters.release === "any" || (filters.release === "current") === row.isCurrentRelease;
+    // Rows without an origin (other projects) are untouched by the origin filter.
+    const originOk = filters.origin === "any" || !row.origin || row.origin === "mixed" || row.origin === filters.origin;
     const ticketOk = ticketMatches(row, filters.ticket);
     const textOk = !text || `${row.title} ${row.shortId} ${row.culprit}`.toLowerCase().includes(text);
     const cellOk = !filters.cell || filters.cell.issueId === row.id;
     const countsOk = row.userCount >= filters.minUsers && row.count >= filters.minEvents;
-    return sideOk && areaOk && releaseOk && ticketOk && textOk && cellOk && countsOk;
+    return sideOk && areaOk && projectOk && releaseOk && originOk && ticketOk && textOk && cellOk && countsOk;
   });
 }
 

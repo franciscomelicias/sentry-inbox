@@ -61,6 +61,9 @@ export type EventFacts = {
 export const SIDES = ["FE", "BE", "MCP", "INT"] as const;
 export type Side = (typeof SIDES)[number];
 
+export const ORIGINS = ["browser", "script", "mixed"] as const;
+export type Origin = (typeof ORIGINS)[number];
+
 export const STATES = ["new", "regressed", "spiking", "ongoing"] as const;
 export type IssueState = (typeof STATES)[number];
 export const BUCKETS = [...STATES, "ugly", "fixFailed", "hidden"] as const;
@@ -106,6 +109,8 @@ export const issueRowSchema = z.object({
   rp: z.object({ key: z.string(), status: z.string(), done: z.boolean() }).optional(),
   triage: triageEntrySchema.optional(),
   owner: z.string().optional(),
+  /** customer-api only: browser when the sampled events carry our FE's version header, script when none does. */
+  origin: z.enum(ORIGINS).optional(),
   /** "path:line" of our code where it was thrown, from the sampled events. */
   topFrame: z.string().optional(),
 });
@@ -141,7 +146,9 @@ export type Inbox = z.infer<typeof inboxSchema>;
 export const filtersSchema = z.object({
   sides: z.array(z.enum(SIDES)),
   areas: z.array(z.string()),
+  projects: z.array(z.string()).default([]),
   release: z.enum(["current", "older", "any"]),
+  origin: z.enum(["any", "browser", "script"]).default("any"),
   ticket: z.enum(["any", "hasRp", "noRp", "rpDone"]),
   minUsers: z.number(),
   minEvents: z.number(),
@@ -154,7 +161,9 @@ export type Filters = z.infer<typeof filtersSchema>;
 export const DEFAULT_FILTERS: Filters = {
   sides: [],
   areas: [],
+  projects: [],
   release: "any",
+  origin: "any",
   ticket: "any",
   minUsers: 0,
   minEvents: 0,

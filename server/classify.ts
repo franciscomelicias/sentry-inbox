@@ -67,6 +67,7 @@ function classifyOne(issue: SentryIssue, input: ClassifyInput, ruleHits: Map<str
     spikingKnown: false,
     realms: realmsOf(facts),
     links: [],
+    ...originOf(issue.project.slug, facts),
     triage: input.triage[issue.id],
   };
 
@@ -207,6 +208,13 @@ export function sideOf(project: string): Side {
 function firstReleaseOf(firstSeen: string, side: Side, releases: ClassifyInput["releases"]): string | null {
   const sideReleases = releases.filter((release) => release.side === (side === "FE" ? "FE" : "BE") && release.at <= firstSeen);
   return sideReleases.sort((a, b) => a.at.localeCompare(b.at)).at(-1)?.version ?? null;
+}
+
+/** No FrontendVersion also covers unauthenticated requests: SentryConfiguration only fills Request Info when authenticated. */
+function originOf(project: string, facts: EventFacts[]): Pick<IssueRow, "origin"> {
+  if (!project.includes("customer-api") || facts.length === 0) return {};
+  const browser = facts.filter((fact) => fact.feVersion).length;
+  return { origin: browser === facts.length ? "browser" : browser === 0 ? "script" : "mixed" };
 }
 
 function realmsOf(facts: EventFacts[]): IssueRow["realms"] {

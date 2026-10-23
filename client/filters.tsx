@@ -2,9 +2,15 @@ import { useState, type RefObject } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { DEFAULT_VIEWS } from "../shared/filter";
 import { DEFAULT_FILTERS, SIDES, type Filters, type IssueRow, type Prefs } from "../shared/model";
-import type { Styles } from "./styles";
+import { serviceOf } from "../shared/areas";
+import { serviceColor, type Styles } from "./styles";
 
 const RELEASES: Filters["release"][] = ["any", "current", "older"];
+const ORIGINS: { value: Filters["origin"]; label: string }[] = [
+  { value: "any", label: "all" },
+  { value: "browser", label: "browser" },
+  { value: "script", label: "script" },
+];
 const TICKETS: { value: Filters["ticket"]; label: string }[] = [
   { value: "any", label: "any" },
   { value: "hasRp", label: "has RP" },
@@ -26,6 +32,7 @@ export function FilterBar({ prefs, rows, searchRef, updatePrefs, styles }: Props
   const set = (patch: Partial<Filters>) => updatePrefs({ filters: { ...filters, ...patch } });
   const toggle = <T,>(list: T[], value: T) => (list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
   const areas = [...new Set(rows.map((row) => row.area))].sort();
+  const projects = [...new Set(rows.map((row) => row.project))].sort();
   const views = [...DEFAULT_VIEWS, ...prefs.savedViews];
 
   return (
@@ -74,6 +81,10 @@ export function FilterBar({ prefs, rows, searchRef, updatePrefs, styles }: Props
         {RELEASES.map((release) => (
           <Chip key={release} label={release} active={filters.release === release} onPress={() => set({ release })} styles={styles} />
         ))}
+        <Text style={styles.muted}> customer-api origin</Text>
+        {ORIGINS.map(({ value, label }) => (
+          <Chip key={value} label={label} active={filters.origin === value} onPress={() => set({ origin: value })} styles={styles} />
+        ))}
         <Text style={styles.muted}> Ticket</Text>
         {TICKETS.map(({ value, label }) => (
           <Chip key={value} label={label} active={filters.ticket === value} onPress={() => set({ ticket: value })} styles={styles} />
@@ -89,6 +100,22 @@ export function FilterBar({ prefs, rows, searchRef, updatePrefs, styles }: Props
         {JSON.stringify(filters) === JSON.stringify(DEFAULT_FILTERS) ? null : <Chip label="✕ clear all" active={false} onPress={() => set(DEFAULT_FILTERS)} styles={styles} />}
       </View>
 
+      {projects.length > 1 ? (
+        <View style={styles.wrap}>
+          <Text style={styles.muted}>Service</Text>
+          {projects.map((project) => (
+            <Chip
+              key={project}
+              label={serviceOf(project)}
+              active={filters.projects.includes(project)}
+              color={serviceColor(project)}
+              onPress={() => set({ projects: toggle(filters.projects, project) })}
+              styles={styles}
+            />
+          ))}
+        </View>
+      ) : null}
+
       {areas.length > 1 ? (
         <View style={styles.wrap}>
           <Text style={styles.muted}>Area</Text>
@@ -102,10 +129,11 @@ export function FilterBar({ prefs, rows, searchRef, updatePrefs, styles }: Props
   );
 }
 
-function Chip({ label, active, onPress, styles }: { label: string; active: boolean; onPress: () => void; styles: Styles }) {
+function Chip({ label, active, color, onPress, styles }: { label: string; active: boolean; color?: string; onPress: () => void; styles: Styles }) {
+  const colored = color ? (active ? { backgroundColor: color, borderColor: color, color: "#fff" } : { borderColor: color }) : null;
   return (
     <Pressable accessibilityRole="button" onPress={onPress}>
-      <Text style={active ? styles.chipActive : styles.chip}>{label}</Text>
+      <Text style={[active ? styles.chipActive : styles.chip, colored]}>{label}</Text>
     </Pressable>
   );
 }
