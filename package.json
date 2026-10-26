@@ -12,7 +12,9 @@
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "release": "sh scripts/release.sh",
+    "version": "node -p \"'export const VERSION = ' + JSON.stringify(require('./package.json').version) + ';'\" > shared/version.ts && git add shared/version.ts"
   },
   "devDependencies": {
     "@getpaseo/plugin": "0.11.1",

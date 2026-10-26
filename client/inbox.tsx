@@ -6,7 +6,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { applyFilters } from "../shared/filter";
 import { groupRows } from "../shared/insights";
 import { jiraBrowseUrl, STAGES, type Bucket, type Inbox, type IssueRow, type Prefs, type Range } from "../shared/model";
-import { getGraphsRpc, getInboxRpc, getPrefsRpc, setPrefsRpc } from "../shared/rpc";
+import { getGraphsRpc, getInboxRpc, getPrefsRpc, getVersionRpc, setPrefsRpc } from "../shared/rpc";
 import { useAgents } from "./agents";
 import { FilterBar } from "./filters";
 import { GraphsPanel } from "./graphs";
@@ -58,6 +58,8 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
     refetchOnWindowFocus: true,
     refetchInterval: AUTO_REFRESH_MS,
   });
+  const fetchVersion = useRpc(getVersionRpc);
+  const version = useQuery({ queryKey: ["sentry-inbox-version"], queryFn: () => fetchVersion({}), staleTime: Infinity });
   const queryClient = useQueryClient();
   const forceRefresh = () =>
     void queryClient.fetchQuery({ queryKey: ["sentry-inbox", stage, range], queryFn: () => fetchInbox({ stage, range, force: true }), staleTime: 0 });
@@ -144,6 +146,13 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
       <View style={styles.fixed}>
       <View style={styles.header}>
         <Text style={styles.title}>Sentry inbox</Text>
+        {version.data ? (
+          <Pressable accessibilityRole="link" onPress={() => void openExternalUrl(version.data.url)}>
+            <Text style={version.data.latest ? styles.badgeWarning : styles.muted}>
+              {version.data.latest ? `v${version.data.current} · ⬆ v${version.data.latest} available` : `v${version.data.current}`}
+            </Text>
+          </Pressable>
+        ) : null}
         {STAGES.map((value) => (
           // Project and environment filters name one stage's projects: drop them on a switch.
           <Pressable key={value} accessibilityRole="button" onPress={() => updatePrefs({ stage: value, filters: { ...prefs.filters, projects: [], environments: [] } })}>

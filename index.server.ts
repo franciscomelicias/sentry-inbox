@@ -1,7 +1,8 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
-import { addRuleRpc, deleteRuleRpc, getGraphsRpc, getInboxRpc, getPrefsRpc, setPrefsRpc } from "./shared/rpc";
+import { addRuleRpc, deleteRuleRpc, getGraphsRpc, getInboxRpc, getPrefsRpc, getVersionRpc, setPrefsRpc } from "./shared/rpc";
 import { getGraphs, getInbox } from "./server/inbox";
 import { addRule, deleteRule, readPrefs, writePrefs } from "./server/store";
+import { getVersion } from "./server/version";
 
 export default function contribute(server: PluginServerContext) {
   server.handle(getInboxRpc, getInbox);
@@ -12,6 +13,7 @@ export default function contribute(server: PluginServerContext) {
     return {};
   });
   server.handle(getPrefsRpc, readPrefs);
+  server.handle(getVersionRpc, getVersion);
   server.handle(setPrefsRpc, async (prefs) => {
     await writePrefs(prefs);
     return {};

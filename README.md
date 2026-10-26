@@ -55,6 +55,15 @@ paseo plugin install ~/paseo-plugins/sentry-inbox
 paseo plugin ls        # sentry-inbox must be "running"
 ```
 
+## Versions and releases
+
+- The version is `package.json`'s; `shared/version.ts` is generated from it by npm's `version` hook (don't edit it).
+- The header shows `vX.Y.Z` (opens the GitHub releases). When GitHub has a newer release it shows
+  `⬆ vA.B.C available` in yellow, which opens that release. Checked against GitHub at most every 6 hours.
+- To release, from a clean `main`: `npm run release -- patch|minor|major` (default patch). It runs typecheck and tests,
+  bumps and commits the version, tags `vX.Y.Z`, pushes, creates the GitHub release with generated notes and reloads
+  the plugin.
+
 ## Update / debug
 
 - After editing: `paseo plugin reload sentry-inbox`. Logs: `paseo plugin logs sentry-inbox`.

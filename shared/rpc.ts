@@ -27,6 +27,12 @@ export const deleteRuleRpc = defineRpc({
   output: z.object({}),
 });
 
+export const getVersionRpc = defineRpc({
+  name: "version.get",
+  input: z.object({}),
+  output: z.object({ current: z.string(), latest: z.string().nullable(), url: z.string() }),
+});
+
 export const getPrefsRpc = defineRpc({
   name: "prefs.get",
   input: z.object({}),
