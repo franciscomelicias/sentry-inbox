@@ -26,6 +26,8 @@ A triage screen for RogerHR's production Sentry errors. Open **Sentry inbox** in
   mark as known, mark as known but ugly.
 - **🔍 Investigate**: opens a new read-only Opus chat in the "Sentry inbox" workspace (lead:sentry's; pin it once in the sidebar) that writes its verdict and repro steps into
   `triage.json`; the verdict then shows in the expanded row.
+- **🔍 on a group** (▸ ×N): one chat investigates every issue of the group, writes each one's verdict into `triage.json`
+  (so each row shows its own), and answers with the issues grouped by root cause.
 - **🎫 Ticket**: asks lead:sentry to run `/create-ticket` for the issue (with the verdict), then the RP shows on the row.
   An RP linked in Sentry (Jira integration) also shows on the row with its Jira status; then 🎫 becomes **🔗** (or `t`, or a click on the badge),
   which opens the ticket in Jira instead of creating one.

@@ -161,6 +161,8 @@ export function GroupRowView({
   hideOpen,
   onToggle,
   onToggleHide,
+  onInvestigate,
+  agentsAvailable,
   styles,
   children,
 }: {
@@ -169,6 +171,8 @@ export function GroupRowView({
   hideOpen: boolean;
   onToggle: () => void;
   onToggleHide: () => void;
+  onInvestigate: () => void;
+  agentsAvailable: boolean;
   styles: Styles;
   children: React.ReactNode;
 }) {
@@ -202,6 +206,7 @@ export function GroupRowView({
         <Text style={[styles.strong, styles.count, { textAlign: "right" }]}>{group.realmCount}</Text>
         <Text style={[styles.muted, styles.owner]}>—</Text>
         <View style={styles.actions}>
+          <SmallButton label="🔍" hint={`Investigate all ${group.rows.length} in one chat, grouped by root cause`} disabled={!agentsAvailable} onPress={onInvestigate} styles={styles} />
           <SmallButton label="🙈" hint={`Hide, snooze or mark all ${group.rows.length} as known`} onPress={onToggleHide} styles={styles} />
         </View>
       </Pressable>

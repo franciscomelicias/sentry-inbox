@@ -61,6 +61,34 @@ This is a read-only investigation: no code edits, no commits, no writes to Sentr
 You may offer to reproduce it locally with /e2e, but only run it if I say so.`;
 }
 
+/** One agent for a group of issues with the same message: a verdict per issue, then the issues grouped by root cause. */
+export function investigateGroupPrompt(rows: IssueRow[]): string {
+  const issues = rows
+    .map(
+      (row) =>
+        `- ${row.shortId} (id ${row.id}) ${row.permalink}\n  ${row.project}, culprit ${row.culprit}${row.topFrame ? `, thrown at ${row.topFrame}` : ""}, ${row.count} events, realms ${
+          row.realms.map((realm) => realm.name).join(", ") || "unknown"
+        }, last release ${row.lastRelease ?? "unknown"}`,
+    )
+    .join("\n");
+  return `Investigate these ${rows.length} Sentry issues. They share the message "${rows[0].title}" but may have different causes:
+${issues}
+
+This is a read-only investigation: no code edits, no commits, no writes to Sentry or Jira.
+
+1. Read AGENTS.md and domain.md (run the setup-domain-knowledge skill if domain.md is missing).
+2. For each issue: fetch it and its latest events with the Sentry MCP (org rogerhr, region https://de.sentry.io), read the
+   code at its release (\`git show <release>:<path>\`, tags are the release numbers), check \`git log\` since then for a fix,
+   and work out repro steps from the breadcrumbs, request URL and realm. Use subagents to work on several issues at once.
+3. Write one entry per issue into ${TRIAGE_PATH}, keyed by its id (merge, keep other fields; write a tmp file then mv, once
+   at the end so parallel work doesn't overwrite itself):
+   { "verdict": "<one sentence>", "confidence": "low|medium|high", "reproSteps": ["…"], "fixedIn"?: "<sha or PR>", "investigatedAt": "<ISO now>" }
+4. Then give me the issues grouped by root cause: for each cause, the short ids, the verdict, the evidence (file:line),
+   the repro steps and whether it is already fixed.
+
+You may offer to reproduce one locally with /e2e, but only run it if I say so.`;
+}
+
 export function ticketMessage(row: IssueRow): string {
   const verdict = row.triage?.verdict
     ? `\nInvestigation: ${row.triage.verdict} (confidence ${row.triage.confidence ?? "?"})${(row.triage.reproSteps ?? [])

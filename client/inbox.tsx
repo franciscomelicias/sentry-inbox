@@ -252,6 +252,8 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
                 hideOpen={hideId === group.key}
                 onToggle={() => toggleGroup(group.key)}
                 onToggleHide={() => setHideId((id) => (id === group.key ? null : group.key))}
+                onInvestigate={() => void agents.investigateGroup(group.rows)}
+                agentsAvailable={agents.available && agents.pending === null}
                 styles={styles}
               >
                 {group.rows.map(renderRow)}

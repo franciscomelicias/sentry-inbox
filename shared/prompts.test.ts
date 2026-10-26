@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { IssueRow } from "./model";
-import { investigatePrompt, leadBrief, RULES_PATH, ticketMessage, TRIAGE_PATH } from "./prompts";
+import { investigateGroupPrompt, investigatePrompt, leadBrief, RULES_PATH, ticketMessage, TRIAGE_PATH } from "./prompts";
 
 const row: IssueRow = {
   id: "42",
@@ -39,6 +39,14 @@ describe("prompts", () => {
     const prompt = investigatePrompt(row);
     expect(prompt).toContain(row.permalink);
     expect(prompt).toContain(TRIAGE_PATH);
+    expect(prompt).toContain("read-only");
+  });
+
+  it("lists every issue of a group and asks for a verdict per issue id, grouped by root cause", () => {
+    const prompt = investigateGroupPrompt([row, { ...row, id: "43", shortId: "ROGER-CUSTOMER-API-PROD-2R" }]);
+    expect(prompt).toContain("(id 42)");
+    expect(prompt).toContain("(id 43)");
+    expect(prompt).toContain("grouped by root cause");
     expect(prompt).toContain("read-only");
   });
 

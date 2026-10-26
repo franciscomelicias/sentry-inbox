@@ -2,7 +2,7 @@ import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
 import { usePaseo } from "@getpaseo/plugin/client";
 import { useState } from "react";
 import type { IssueRow } from "../shared/model";
-import { investigatePrompt, leadBrief, ticketMessage } from "../shared/prompts";
+import { investigateGroupPrompt, investigatePrompt, leadBrief, ticketMessage } from "../shared/prompts";
 
 const REPO_PATH = "/Users/franciscomelicias/Documents/roger-platform";
 const PROVIDER = "claude/claude-opus-5-5";
@@ -53,16 +53,19 @@ export function useAgents(navigation: PluginSurfaceProps["navigation"]) {
 
   const openLead = () => run(LEAD_TITLE, async () => (await ensureLead()).id);
 
-  const investigate = (row: IssueRow) =>
-    run(row.shortId, async () => {
+  /** Reopens the chat with that title in lead:sentry's workspace, or starts it. */
+  const openOrStart = (title: string, prompt: () => string) =>
+    run(title, async () => {
       const lead = await ensureLead();
-      const title = `Investigate ${row.shortId}`;
       const { entries } = await paseo.agents.list({ filter: { includeArchived: false } });
       const existing = entries.map((entry) => entry.agent).find((agent) => agent.title === title && agent.workspaceId === lead.workspaceId);
       if (existing) return existing.id;
-      const agent = await paseo.workspaces.ref(lead.workspaceId).agents.create({ config: { provider: PROVIDER, modeId: AGENT_MODE }, title, prompt: investigatePrompt(row) });
+      const agent = await paseo.workspaces.ref(lead.workspaceId).agents.create({ config: { provider: PROVIDER, modeId: AGENT_MODE }, title, prompt: prompt() });
       return agent.id;
     });
+
+  const investigate = (row: IssueRow) => openOrStart(`Investigate ${row.shortId}`, () => investigatePrompt(row));
+  const investigateGroup = (rows: IssueRow[]) => openOrStart(`Investigate ${rows[0].shortId} +${rows.length - 1}`, () => investigateGroupPrompt(rows));
 
   const ticket = (row: IssueRow) =>
     run(row.shortId, async () => {
@@ -71,5 +74,5 @@ export function useAgents(navigation: PluginSurfaceProps["navigation"]) {
       return lead.id;
     });
 
-  return { openLead, investigate, ticket, pending, error, available: navigation !== undefined };
+  return { openLead, investigate, investigateGroup, ticket, pending, error, available: navigation !== undefined };
 }
