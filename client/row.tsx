@@ -53,7 +53,11 @@ export function IssueRowView(props: Props) {
             ) : null}
             {row.origin === "script" ? <Text style={styles.badgeWarning}>🤖 script</Text> : null}
             {row.origin === "mixed" ? <Text style={styles.badgeWarning}>🤖 script + browser</Text> : null}
-            {row.rp ? <Text style={row.rp.done ? styles.badge : styles.badgeWarning}>{`${row.rp.key} ${row.rp.status}`}</Text> : null}
+            {row.rp ? (
+              <Pressable accessibilityRole="link" onPress={() => void openExternalUrl(jiraBrowseUrl(row.rp!.key))}>
+                <Text style={row.rp.done ? styles.badge : styles.badgeWarning}>{`${row.rp.key} ${row.rp.status} ↗`}</Text>
+              </Pressable>
+            ) : null}
             {row.spikingKnown ? <Text style={styles.badgeDanger}>known, but spiking</Text> : null}
             {row.hiddenReason ? <Text style={styles.badge}>{HIDDEN_LABELS[row.hiddenReason]}</Text> : null}
           </View>
