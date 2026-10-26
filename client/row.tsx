@@ -70,7 +70,7 @@ export function IssueRowView(props: Props) {
         <View style={styles.actions}>
           <SmallButton label="🔍" hint="Investigate: AI analysis + repro steps (i i)" disabled={!props.agentsAvailable} onPress={props.onInvestigate} styles={styles} />
           {row.rp ? (
-            <SmallButton label="🎫↗" hint={`Open ${row.rp.key} in Jira (t)`} onPress={() => void openExternalUrl(jiraBrowseUrl(row.rp!.key))} styles={styles} />
+            <SmallButton label="🔗" hint={`Open ${row.rp.key} in Jira (t)`} onPress={() => void openExternalUrl(jiraBrowseUrl(row.rp!.key))} styles={styles} />
           ) : (
             <SmallButton label="🎫" hint="Create an RP ticket via lead:sentry (t t)" disabled={!props.agentsAvailable} onPress={props.onTicket} styles={styles} />
           )}
@@ -272,7 +272,7 @@ export function SmallButton({
       onPress={onPress}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
-      style={[primary ? styles.buttonPrimary : styles.button, { marginLeft: 4 }, disabled ? styles.disabled : null]}
+      style={[primary ? styles.buttonPrimary : styles.button, [...label].length <= 2 ? styles.iconButton : null, { marginLeft: 4 }, disabled ? styles.disabled : null]}
     >
       <Text style={primary ? styles.buttonPrimaryText : styles.buttonText}>{label}</Text>
       {hovered && hint ? (

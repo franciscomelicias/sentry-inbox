@@ -78,6 +78,8 @@ export function createStyles(colors: Colors, compact: boolean) {
     bannerDanger: { borderWidth: 1, borderColor: colors.statusDanger, borderRadius: 6, padding: 8, gap: 4 },
     button: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface1 },
     buttonPrimary: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6, backgroundColor: colors.accent },
+    // Same width for every icon button, so action columns line up whatever the glyph.
+    iconButton: { width: 32, paddingHorizontal: 0, alignItems: "center" as const },
     buttonText: { color: colors.foreground, fontSize: 12 },
     buttonPrimaryText: { color: colors.accentForeground, fontSize: 12, fontWeight: "600" as const },
     disabled: { opacity: 0.5 },
