@@ -272,6 +272,14 @@ describe("where it was thrown", () => {
   });
 });
 
+describe("linked ticket", () => {
+  it("takes the RP linked in Sentry and its Jira status", () => {
+    const annotations = [{ url: "https://example.com/x", displayName: "Docs" }, { url: "https://rogerhr.atlassian.net/browse/RP-42", displayName: "RP-42" }];
+    const tickets = new Map([["RP-42", { status: "In Progress", done: false, fixVersions: [] }]]);
+    expect(rowOf(run({ issues: [issue("1", { annotations })], tickets }), "1").rp).toEqual({ key: "RP-42", status: "In Progress", done: false });
+  });
+});
+
 describe("environments", () => {
   it("lists the distinct environments of the sampled events", () => {
     const facts = new Map([["1", [fact("1", { environment: "test" }), fact("1", { environment: "staging" }), fact("1", { environment: "test" }), fact("1")]]]);

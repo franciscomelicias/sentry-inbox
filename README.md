@@ -25,6 +25,8 @@ A triage screen for RogerHR's production Sentry errors. Open **Sentry inbox** in
 - **🔍 Investigate**: opens a new read-only Opus chat in the "Sentry inbox" workspace (lead:sentry's; pin it once in the sidebar) that writes its verdict and repro steps into
   `triage.json`; the verdict then shows in the expanded row.
 - **🎫 Ticket**: asks lead:sentry to run `/create-ticket` for the issue (with the verdict), then the RP shows on the row.
+  An RP linked in Sentry (Jira integration) also shows on the row with its Jira status; then 🎫 becomes **🎫↗** (or `t`),
+  which opens the ticket in Jira instead of creating one.
 - **💬 lead:sentry**: a long-lived agent (created on first click, labelled `source: sentry-inbox-lead`) that owns the
   judgement calls. Ask in plain words: "hide all demo realms", "PayrollLocked on adjustments is known, RP-1234".
 - Keys: `j`/`k` move, `o` expand, `i i` investigate, `t t` ticket (press twice: they start agents), `h`/`u` hide menu, `g` graphs, `/` search, `?` help.

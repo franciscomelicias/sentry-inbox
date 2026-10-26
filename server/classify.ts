@@ -75,7 +75,7 @@ function classifyOne(issue: SentryIssue, input: ClassifyInput, ruleHits: Map<str
   const spiking = isSpiking(daily, last24);
   const matched = input.rules.find((rule) => matchesRule(row, facts, rule));
   if (matched) ruleHits.set(matched.id, (ruleHits.get(matched.id) ?? 0) + 1);
-  const key = (matched?.rp ?? input.triage[issue.id]?.rp)?.toUpperCase();
+  const key = (matched?.rp ?? input.triage[issue.id]?.rp ?? linkedRp(issue))?.toUpperCase();
   const ticket = key ? input.tickets.get(key) : undefined;
   if (key) row.rp = { key, status: ticket?.status ?? "?", done: ticket?.done ?? false };
 
@@ -197,6 +197,11 @@ export function compareVersions(a: string, b: string): number {
     if (diff !== 0) return diff;
   }
   return 0;
+}
+
+/** The RP ticket linked to the issue in Sentry (Jira integration), if any. */
+export function linkedRp(issue: SentryIssue): string | undefined {
+  return issue.annotations?.map((annotation) => annotation.displayName).find((name) => /^RP-\d+$/i.test(name));
 }
 
 export function sideOf(project: string): Side {

@@ -2,7 +2,7 @@ import { openExternalUrl } from "@getpaseo/plugin/client";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { IssueGroup } from "../shared/insights";
-import type { IssueRow } from "../shared/model";
+import { jiraBrowseUrl, type IssueRow } from "../shared/model";
 import { GroupHideMenu, HideMenu } from "./hide-menu";
 import { serviceOf } from "../shared/areas";
 import { COLUMN, eventsColor, serviceColor, type Styles } from "./styles";
@@ -65,7 +65,11 @@ export function IssueRowView(props: Props) {
         </Text>
         <View style={styles.actions}>
           <SmallButton label="🔍" hint="Investigate: AI analysis + repro steps (i i)" disabled={!props.agentsAvailable} onPress={props.onInvestigate} styles={styles} />
-          <SmallButton label="🎫" hint="Create an RP ticket via lead:sentry (t t)" disabled={!props.agentsAvailable} onPress={props.onTicket} styles={styles} />
+          {row.rp ? (
+            <SmallButton label="🎫↗" hint={`Open ${row.rp.key} in Jira (t)`} onPress={() => void openExternalUrl(jiraBrowseUrl(row.rp!.key))} styles={styles} />
+          ) : (
+            <SmallButton label="🎫" hint="Create an RP ticket via lead:sentry (t t)" disabled={!props.agentsAvailable} onPress={props.onTicket} styles={styles} />
+          )}
           <SmallButton label="🙈" hint="Hide, snooze or mark as known (h)" onPress={props.onToggleHide} styles={styles} />
           <SmallButton label="↗" hint="Open in Sentry" onPress={() => void openExternalUrl(row.permalink)} styles={styles} />
         </View>

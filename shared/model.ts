@@ -63,6 +63,8 @@ export type EventFacts = {
 export const SIDES = ["FE", "BE", "MCP", "INT"] as const;
 export type Side = (typeof SIDES)[number];
 
+export const jiraBrowseUrl = (key: string) => `https://rogerhr.atlassian.net/browse/${key}`;
+
 export const STAGES = ["prod", "dev"] as const;
 export type Stage = (typeof STAGES)[number];
 

@@ -1,6 +1,6 @@
 import type { EventFacts, Graphs, Inbox, Range, Stage } from "../shared/model";
 import { ownerOf } from "./blame";
-import { classifyIssues } from "./classify";
+import { classifyIssues, linkedRp } from "./classify";
 import { extractFacts } from "./facts";
 import { buildGraphs } from "./graphs";
 import { fetchTickets, type Ticket } from "./jira";
@@ -104,7 +104,11 @@ async function assemble(data: SentryData, range: Range): Promise<Inbox> {
 
   const [rulesFile, triage] = await Promise.all([readRules(), readTriage()]);
   if (rulesFile.fileError) errors.push(`rules.json can't be parsed (${rulesFile.fileError}): no rules applied`);
-  const rpKeys = [...rulesFile.rules.flatMap((rule) => (rule.rp ? [rule.rp] : [])), ...Object.values(triage).flatMap((entry) => (entry.rp ? [entry.rp] : []))];
+  const rpKeys = [
+    ...rulesFile.rules.flatMap((rule) => (rule.rp ? [rule.rp] : [])),
+    ...Object.values(triage).flatMap((entry) => (entry.rp ? [entry.rp] : [])),
+    ...data.issues.flatMap((issue) => linkedRp(issue) ?? []),
+  ];
   const tickets = await fetchTickets(rpKeys).catch((cause): Map<string, Ticket> => {
     errors.push(cause instanceof Error ? cause.message : String(cause));
     return new Map();
