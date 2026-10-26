@@ -33,6 +33,7 @@ export function FilterBar({ prefs, rows, searchRef, updatePrefs, styles }: Props
   const toggle = <T,>(list: T[], value: T) => (list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
   const areas = [...new Set(rows.map((row) => row.area))].sort();
   const projects = [...new Set(rows.map((row) => row.project))].sort();
+  const environments = [...new Set(rows.flatMap((row) => row.environments))].sort();
   const views = [...DEFAULT_VIEWS, ...prefs.savedViews];
 
   return (
@@ -112,6 +113,15 @@ export function FilterBar({ prefs, rows, searchRef, updatePrefs, styles }: Props
               onPress={() => set({ projects: toggle(filters.projects, project) })}
               styles={styles}
             />
+          ))}
+        </View>
+      ) : null}
+
+      {environments.length > 1 ? (
+        <View style={styles.wrap}>
+          <Text style={styles.muted}>Environment</Text>
+          {environments.map((environment) => (
+            <Chip key={environment} label={environment} active={filters.environments.includes(environment)} onPress={() => set({ environments: toggle(filters.environments, environment) })} styles={styles} />
           ))}
         </View>
       ) : null}

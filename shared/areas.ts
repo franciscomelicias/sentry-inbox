@@ -13,8 +13,8 @@ const AREAS: [fragment: string, area: string][] = [
   ["/integration", "Integrations"],
 ];
 
-/** Short Sentry project name: "roger-public-api-prod" → "public-api", "roger-integration-abacus-prod" → "abacus". */
-export const serviceOf = (project: string) => project.replace(/^roger-(integration-)?/, "").replace(/-prod$/, "");
+/** Short Sentry project name: "roger-public-api-prod" → "public-api", "roger-integration-abacus-dev" → "abacus". */
+export const serviceOf = (project: string) => project.replace(/^roger-(integration-)?/, "").replace(/-(prod|dev)$/, "");
 
 export function areaOf(path: string): string {
   const lower = path.toLowerCase();

@@ -12,6 +12,7 @@ import {
   type Prefs,
   type Rule,
   type RuleInput,
+  type Stage,
   type Triage,
 } from "../shared/model";
 import { cacheDir, rulesPath, triagePath } from "./paths";
@@ -24,6 +25,7 @@ export class RulesFileBrokenError extends Error {
 }
 
 export const DEFAULT_PREFS: Prefs = {
+  stage: "prod",
   range: "deploy",
   tab: "new",
   filters: DEFAULT_FILTERS,
@@ -137,13 +139,15 @@ export async function readCachedFacts(issueId: string): Promise<{ lastSeen: stri
 export const writeCachedFacts = (issueId: string, lastSeen: string, facts: EventFacts[]) =>
   writeAtomic(join(cacheDir(), "facts", `${issueId}.json`), { lastSeen, facts });
 
-export async function readInboxCache(): Promise<Inbox | null> {
-  const text = await readText(join(cacheDir(), "inbox.json"));
+const inboxCachePath = (stage: Stage) => join(cacheDir(), stage === "prod" ? "inbox.json" : `inbox-${stage}.json`);
+
+export async function readInboxCache(stage: Stage): Promise<Inbox | null> {
+  const text = await readText(inboxCachePath(stage));
   const parsed = text ? inboxSchema.safeParse(safeJson(text)) : null;
   return parsed?.success ? parsed.data : null;
 }
 
-export const writeInboxCache = (inbox: Inbox) => writeAtomic(join(cacheDir(), "inbox.json"), inbox);
+export const writeInboxCache = (stage: Stage, inbox: Inbox) => writeAtomic(inboxCachePath(stage), inbox);
 
 function safeJson(text: string): unknown {
   try {

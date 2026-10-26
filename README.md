@@ -9,6 +9,8 @@ A triage screen for RogerHR's production Sentry errors. Open **Sentry inbox** in
 - Tabs: **New** · **Regressed** · **Spiking** · **Ongoing** · **Known but ugly** (known, but still a raw error for the user)
   · **Fix didn't work** (RP done and released, still happening on that release or later) · **Hidden**.
 - **Since last deploy** is the default range; also 24h / 7d / 14d.
+- **prod / dev** switch in the header: dev reads every `-dev` project across the staging, test and preprod environments
+  at once; an **Environment** filter then narrows to one of them (it only shows when the rows span more than one).
 - **FE+BE linked** by RequestId (`ROGERHR-REQUEST-ID` on both sides): a small violet `⇄ BE` / `⇄ FE` badge on the row; the expanded row shows the other side as a card (title, endpoint, file:line, events, realms, matched RequestIds) with its own 🔍 and ↗. Groups say how many members have a trace.
 - **↗** opens the issue in Sentry.
 - **Realms impacted** (from the latest 20 events per issue), owner hint from `git blame` of the line that threw.

@@ -49,16 +49,16 @@ beforeEach(() => {
 
 describe("getInbox", () => {
   it("applies a new rule on the next load without refetching Sentry", async () => {
-    await getInbox({ range: "7d", force: true });
+    await getInbox({ stage: "prod", range: "7d", force: true });
     await addRule({ kind: "hidden", match: { issueId: "1" }, reason: "noise" });
-    const inbox = await getInbox({ range: "7d", force: false });
+    const inbox = await getInbox({ stage: "prod", range: "7d", force: false });
     expect(inbox.rows.find((row) => row.id === "1")?.bucket).toBe("hidden");
     expect(sentry.listIssues).toHaveBeenCalledTimes(1);
   });
 
   it("loads the issue list without the graph-only Sentry query", async () => {
     vi.mocked(sentry.hourlyTotals).mockClear();
-    await getInbox({ range: "24h", force: true });
+    await getInbox({ stage: "prod", range: "24h", force: true });
     expect(sentry.hourlyTotals).not.toHaveBeenCalled();
   });
 
@@ -67,7 +67,7 @@ describe("getInbox", () => {
       if (id === "2") throw new Error("Sentry 404 on /issues/2/events/");
       return [event(`e${id}`)];
     });
-    const inbox = await getInbox({ range: "14d", force: true });
+    const inbox = await getInbox({ stage: "prod", range: "14d", force: true });
     expect(inbox.rows.map((row) => row.id).sort()).toEqual(["1", "2"]);
     expect(inbox.errors.join(" ")).toMatch(/1 issue/);
   });

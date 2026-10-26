@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { applyFilters } from "../shared/filter";
 import { groupRows } from "../shared/insights";
-import type { Bucket, Inbox, IssueRow, Prefs, Range } from "../shared/model";
+import { STAGES, type Bucket, type Inbox, type IssueRow, type Prefs, type Range } from "../shared/model";
 import { getGraphsRpc, getInboxRpc, getPrefsRpc, setPrefsRpc } from "../shared/rpc";
 import { useAgents } from "./agents";
 import { FilterBar } from "./filters";
@@ -49,9 +49,10 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
   const agents = useAgents(navigation);
   const fetchInbox = useRpc(getInboxRpc);
   const range = prefs?.range ?? "deploy";
+  const stage = prefs?.stage ?? "prod";
   const inbox = useQuery({
-    queryKey: ["sentry-inbox", range],
-    queryFn: () => fetchInbox({ range, force: false }),
+    queryKey: ["sentry-inbox", stage, range],
+    queryFn: () => fetchInbox({ stage, range, force: false }),
     enabled: prefs !== null,
     staleTime: STALE_MS,
     refetchOnWindowFocus: true,
@@ -59,7 +60,7 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
   });
   const queryClient = useQueryClient();
   const forceRefresh = () =>
-    void queryClient.fetchQuery({ queryKey: ["sentry-inbox", range], queryFn: () => fetchInbox({ range, force: true }), staleTime: 0 });
+    void queryClient.fetchQuery({ queryKey: ["sentry-inbox", stage, range], queryFn: () => fetchInbox({ stage, range, force: true }), staleTime: 0 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [hideId, setHideId] = useState<string | null>(null);
@@ -76,8 +77,8 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
   const [graphsOpen, setGraphsOpen] = useState(false);
   const fetchGraphs = useRpc(getGraphsRpc);
   const graphs = useQuery({
-    queryKey: ["sentry-inbox-graphs", range],
-    queryFn: () => fetchGraphs({ range }),
+    queryKey: ["sentry-inbox-graphs", stage, range],
+    queryFn: () => fetchGraphs({ stage, range }),
     enabled: graphsOpen && prefs !== null,
     staleTime: STALE_MS,
   });
@@ -142,6 +143,13 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
       <View style={styles.fixed}>
       <View style={styles.header}>
         <Text style={styles.title}>Sentry inbox</Text>
+        {STAGES.map((value) => (
+          // Project and environment filters name one stage's projects: drop them on a switch.
+          <Pressable key={value} accessibilityRole="button" onPress={() => updatePrefs({ stage: value, filters: { ...prefs.filters, projects: [], environments: [] } })}>
+            <Text style={stage === value ? styles.chipActive : styles.chip}>{value}</Text>
+          </Pressable>
+        ))}
+        <Text style={styles.muted}>·</Text>
         {(Object.keys(RANGE_LABELS) as Range[]).map((value) => (
           <Pressable key={value} accessibilityRole="button" onPress={() => updatePrefs({ range: value })}>
             <Text style={range === value ? styles.chipActive : styles.chip}>

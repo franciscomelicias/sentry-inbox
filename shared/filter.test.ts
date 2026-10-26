@@ -25,6 +25,7 @@ function row(id: string, overrides: Partial<IssueRow> = {}): IssueRow {
     spikingKnown: false,
     realms: [],
     links: [],
+    environments: [],
     ...overrides,
   };
 }
@@ -62,6 +63,11 @@ describe("applyFilters", () => {
     const rows = [row("b", { origin: "browser" }), row("s", { origin: "script" }), row("m", { origin: "mixed" }), row("fe", { side: "FE" })];
     expect(ids(rows, { origin: "browser" })).toEqual(["b", "m", "fe"]);
     expect(ids(rows, { origin: "script" })).toEqual(["s", "m", "fe"]);
+  });
+
+  it("keeps rows seen in any selected environment", () => {
+    const rows = [row("s", { environments: ["staging"] }), row("t", { environments: ["test", "staging"] }), row("p", { environments: ["preprod"] })];
+    expect(ids(rows, { environments: ["staging"] })).toEqual(["s", "t"]);
   });
 
   it("filters by Sentry project", () => {

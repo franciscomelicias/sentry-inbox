@@ -9,7 +9,7 @@ function row(id: string, overrides: Partial<IssueRow> = {}): IssueRow {
   return {
     id, shortId: `P-${id}`, title: `Error ${id}`, type: "Error", culprit: "", project: "roger-customer-api-prod", side: "BE",
     area: "Time", permalink: "", firstSeen: hoursAgo(24 * 30), lastSeen: hoursAgo(0), firstRelease: null, lastRelease: null,
-    isCurrentRelease: true, count: 1, userCount: 0, daily: Array(14).fill(1), bucket: "ongoing", spikingKnown: false, realms: [], links: [],
+    isCurrentRelease: true, count: 1, userCount: 0, daily: Array(14).fill(1), bucket: "ongoing", spikingKnown: false, realms: [], links: [], environments: [],
     ...overrides,
   };
 }

@@ -9,6 +9,7 @@ describe("extractFacts", () => {
     expect(facts).toMatchObject({
       eventId: "548cd52344064bedb33d7bd44a83874b",
       release: "86.0.1",
+      environment: "prod",
       realm: "acme",
       feVersion: "86.0.1",
       requestId: "b4d930bd-5e15-4504-a1a4-fd8cf57fa1b3",

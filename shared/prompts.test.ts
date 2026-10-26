@@ -24,6 +24,7 @@ const row: IssueRow = {
   spikingKnown: false,
   realms: [{ name: "acme", events: 2, users: 0 }],
   links: [],
+  environments: [],
 };
 
 describe("prompts", () => {

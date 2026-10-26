@@ -1,4 +1,4 @@
-import type { EventFacts, Graphs, Inbox, Range } from "../shared/model";
+import type { EventFacts, Graphs, Inbox, Range, Stage } from "../shared/model";
 import { ownerOf } from "./blame";
 import { classifyIssues } from "./classify";
 import { extractFacts } from "./facts";
@@ -10,7 +10,7 @@ import {
   latestEvents,
   listDeployedReleases,
   listIssues,
-  listProdProjects,
+  listProjects,
   SentryAuthError,
   SentryRateLimitError,
   type Release,
@@ -25,8 +25,8 @@ const DEAD_RULE_MS = 30 * DAY_MS;
 const EVENTS_CONCURRENCY = 2;
 const OWNER_CONCURRENCY = 8;
 const STATS_BATCH = 100;
-const FE_PROJECT = "roger-frontend-prod";
-const BE_PROJECT = "roger-customer-api-prod";
+const feProject = (stage: Stage) => `roger-frontend-${stage}`;
+const beProject = (stage: Stage) => `roger-customer-api-${stage}`;
 
 /** What Sentry returned; rules, triage and the range are applied on every load, so a new rule shows at once. */
 type SentryData = {
@@ -40,19 +40,19 @@ type SentryData = {
   errors: string[];
 };
 
-let latest: { at: number; data: Promise<SentryData> } | null = null;
-let latestHourly: { at: number; hourly: Promise<{ at: string; count: number }[]> } | null = null;
-let projects: Promise<{ slug: string; id: string }[]> | null = null;
+const latest = new Map<Stage, { at: number; data: Promise<SentryData> }>();
+const latestHourly = new Map<Stage, { at: number; hourly: Promise<{ at: string; count: number }[]> }>();
+const projects = new Map<Stage, Promise<{ slug: string; id: string }[]>>();
 
-export async function getInbox({ range, force }: { range: Range; force: boolean }): Promise<Inbox> {
+export async function getInbox({ stage, range, force }: { stage: Stage; range: Range; force: boolean }): Promise<Inbox> {
   try {
-    const inbox = await assemble(await loadSentry(force), range);
-    await writeInboxCache(inbox);
+    const inbox = await assemble(await loadSentry(stage, force), range);
+    await writeInboxCache(stage, inbox);
     return inbox;
   } catch (cause) {
     // A bad token must be fixed, not hidden behind old data.
     if (cause instanceof SentryAuthError) throw cause;
-    const stale = await readInboxCache();
+    const stale = await readInboxCache(stage);
     if (!stale) throw cause;
     const message = cause instanceof Error ? cause.message : String(cause);
     return { ...stale, staleSince: stale.staleSince ?? stale.fetchedAt, errors: [...stale.errors.filter((error) => error !== message), message] };
@@ -60,29 +60,35 @@ export async function getInbox({ range, force }: { range: Range; force: boolean 
 }
 
 /** One Sentry fetch shared by every load within FRESH_MS, including concurrent ones. */
-function loadSentry(force: boolean): Promise<SentryData> {
-  if (!force && latest && Date.now() - latest.at < FRESH_MS) return latest.data;
-  const data = fetchSentry();
-  latest = { at: Date.now(), data };
+function loadSentry(stage: Stage, force: boolean): Promise<SentryData> {
+  const cached = latest.get(stage);
+  if (!force && cached && Date.now() - cached.at < FRESH_MS) return cached.data;
+  const data = fetchSentry(stage);
+  latest.set(stage, { at: Date.now(), data });
   data.catch(() => {
-    if (latest?.data === data) latest = null;
+    if (latest.get(stage)?.data === data) latest.delete(stage);
   });
   return data;
 }
 
-async function fetchSentry(): Promise<SentryData> {
-  projects ??= listProdProjects().catch((cause) => {
-    projects = null;
-    throw cause;
-  });
-  const prod = await projects;
-  const projectIds = prod.map((project) => project.id);
+async function fetchSentry(stage: Stage): Promise<SentryData> {
+  if (!projects.has(stage)) {
+    projects.set(
+      stage,
+      listProjects(stage).catch((cause) => {
+        projects.delete(stage);
+        throw cause;
+      }),
+    );
+  }
+  const stageProjects = await projects.get(stage)!;
+  const projectIds = stageProjects.map((project) => project.id);
   const releasesOf = (slug: string) => {
-    const id = prod.find((project) => project.slug === slug)?.id;
-    return id ? listDeployedReleases(id) : Promise.resolve([]);
+    const id = stageProjects.find((project) => project.slug === slug)?.id;
+    return id ? listDeployedReleases(id, stage) : Promise.resolve([]);
   };
-  const [issues, fe, be] = await Promise.all([listIssues(projectIds), releasesOf(FE_PROJECT), releasesOf(BE_PROJECT)]);
-  const [{ facts, failed }, hourly24] = await Promise.all([factsFor(issues), stats24h(issues.map((issue) => issue.id), projectIds)]);
+  const [issues, fe, be] = await Promise.all([listIssues(projectIds, stage), releasesOf(feProject(stage)), releasesOf(beProject(stage))]);
+  const [{ facts, failed }, hourly24] = await Promise.all([factsFor(issues, stage), stats24h(issues.map((issue) => issue.id), projectIds, stage)]);
   const errors = failed > 0 ? [`${failed} issue(s) without fresh events (Sentry errors or rate limit): realms, links and stale-FE use older or no samples for them`] : [];
   return { fetchedAt: new Date().toISOString(), issues, facts, hourly24, projectIds, fe, be, errors };
 }
@@ -143,9 +149,9 @@ async function assemble(data: SentryData, range: Range): Promise<Inbox> {
   };
 }
 
-export async function getGraphs({ range }: { range: Range }): Promise<Graphs> {
-  const data = await loadSentry(false);
-  const [inbox, hourly] = await Promise.all([assemble(data, range), loadHourly(data.projectIds)]);
+export async function getGraphs({ stage, range }: { stage: Stage; range: Range }): Promise<Graphs> {
+  const data = await loadSentry(stage, false);
+  const [inbox, hourly] = await Promise.all([assemble(data, range), loadHourly(data.projectIds, stage)]);
   const since = new Date(Date.now() - 14 * DAY_MS).toISOString();
   // FE and BE ship the same version numbers: one marker per version, at its first prod event.
   const markers = new Map([...data.fe, ...data.be].filter((release) => release.at >= since).sort((a, b) => b.at.localeCompare(a.at)).map((release) => [release.version, release]));
@@ -159,12 +165,13 @@ export async function getGraphs({ range }: { range: Range }): Promise<Graphs> {
   });
 }
 
-function loadHourly(projectIds: string[]) {
-  if (latestHourly && Date.now() - latestHourly.at < FRESH_MS) return latestHourly.hourly;
-  const hourly = hourlyTotals(projectIds);
-  latestHourly = { at: Date.now(), hourly };
+function loadHourly(projectIds: string[], stage: Stage) {
+  const cached = latestHourly.get(stage);
+  if (cached && Date.now() - cached.at < FRESH_MS) return cached.hourly;
+  const hourly = hourlyTotals(projectIds, stage);
+  latestHourly.set(stage, { at: Date.now(), hourly });
   hourly.catch(() => {
-    latestHourly = null;
+    latestHourly.delete(stage);
   });
   return hourly;
 }
@@ -179,7 +186,7 @@ function rangeStartOf(range: Range, deploy: Release | null, now: Date): string {
  * Sampled facts per issue; an issue whose lastSeen hasn't moved reuses its cached sample without an API call.
  * A failed fetch keeps the older sample (or none) instead of failing the inbox; a rate limit stops further fetches.
  */
-async function factsFor(issues: SentryIssue[]): Promise<{ facts: Map<string, EventFacts[]>; failed: number }> {
+async function factsFor(issues: SentryIssue[], stage: Stage): Promise<{ facts: Map<string, EventFacts[]>; failed: number }> {
   const facts = new Map<string, EventFacts[]>();
   let failed = 0;
   let rateLimited = false;
@@ -191,7 +198,7 @@ async function factsFor(issues: SentryIssue[]): Promise<{ facts: Map<string, Eve
     }
     try {
       if (rateLimited) throw new SentryRateLimitError("skipped after a rate limit");
-      const sampled = (await latestEvents(issue.id)).map((event) => extractFacts(event, issue.id, issue.project.slug));
+      const sampled = (await latestEvents(issue.id, stage)).map((event) => extractFacts(event, issue.id, issue.project.slug));
       await writeCachedFacts(issue.id, issue.lastSeen, sampled);
       facts.set(issue.id, sampled);
     } catch (cause) {
@@ -204,9 +211,9 @@ async function factsFor(issues: SentryIssue[]): Promise<{ facts: Map<string, Eve
   return { facts, failed };
 }
 
-async function stats24h(ids: string[], projectIds: string[]): Promise<Map<string, number[]>> {
+async function stats24h(ids: string[], projectIds: string[], stage: Stage): Promise<Map<string, number[]>> {
   const batches = Array.from({ length: Math.ceil(ids.length / STATS_BATCH) }, (_, index) => ids.slice(index * STATS_BATCH, (index + 1) * STATS_BATCH));
-  const maps = await Promise.all(batches.map((batch) => issueStats24h(batch, projectIds)));
+  const maps = await Promise.all(batches.map((batch) => issueStats24h(batch, projectIds, stage)));
   return new Map(maps.flatMap((map) => [...map]));
 }
 

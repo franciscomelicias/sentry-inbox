@@ -12,7 +12,7 @@ type Props = {
   graphs: Graphs | undefined;
   loading: boolean;
   error: unknown;
-  /** The rows after filters: issue counts and the heatmap follow the filters, event rates are all prod. */
+  /** The rows after filters: issue counts and the heatmap follow the filters, event rates are all errors of the stage. */
   rows: IssueRow[];
   deployAt: string | null;
   open: boolean;
@@ -61,7 +61,7 @@ function GraphsBody({ graphs, rows, deployAt, onCell, styles }: Pick<Props, "row
             <Tile value={String(counts.fixFailed)} label="fix didn't work" danger styles={styles} />
           </View>
 
-          <Text style={styles.label}>Events per hour, 7 days · all prod errors · releases marked</Text>
+          <Text style={styles.label}>Events per hour, 7 days · all errors · releases marked</Text>
           <HourlyBars graphs={graphs} styles={styles} />
 
           <Text style={styles.label}>

@@ -29,6 +29,7 @@ function row(id: string, overrides: Partial<IssueRow> = {}): IssueRow {
     spikingKnown: false,
     realms: [],
     links: [],
+    environments: [],
     ...overrides,
   };
 }

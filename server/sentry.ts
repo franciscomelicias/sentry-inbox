@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import type { Stage } from "../shared/model";
 import type { SentryEvent } from "./facts";
 
 const execFileAsync = promisify(execFile);
@@ -7,6 +8,8 @@ const execFileAsync = promisify(execFile);
 const API = "https://de.sentry.io/api/0";
 const ORG = "rogerhr";
 const DEFAULT_RETRY_AFTER_S = 60;
+/** The `-dev` projects report to three environments; dev reads them all at once. */
+const ENVIRONMENTS: Record<Stage, string[]> = { prod: ["prod"], dev: ["staging", "test", "preprod"] };
 
 export class SentryAuthError extends Error {
   constructor() {
@@ -94,18 +97,18 @@ async function sentryPages<T>(path: string, params: Record<string, string | stri
   return items;
 }
 
-export async function listProdProjects(): Promise<{ slug: string; id: string }[]> {
+export async function listProjects(stage: Stage): Promise<{ slug: string; id: string }[]> {
   const projects = await sentryPages<{ slug: string; id: string }>(`/organizations/${ORG}/projects/`, {}, 5);
-  return projects.filter((project) => project.slug.endsWith("-prod")).map(({ slug, id }) => ({ slug, id }));
+  return projects.filter((project) => project.slug.endsWith(`-${stage}`)).map(({ slug, id }) => ({ slug, id }));
 }
 
-export function listIssues(projectIds: string[]): Promise<SentryIssue[]> {
+export function listIssues(projectIds: string[], stage: Stage): Promise<SentryIssue[]> {
   return sentryPages<SentryIssue>(
     `/organizations/${ORG}/issues/`,
     {
       project: projectIds,
       query: "is:unresolved",
-      environment: "prod",
+      environment: ENVIRONMENTS[stage],
       statsPeriod: "14d",
       groupStatsPeriod: "14d",
       sort: "date",
@@ -116,7 +119,7 @@ export function listIssues(projectIds: string[]): Promise<SentryIssue[]> {
 }
 
 /** Hourly counts for the last 24h, oldest first. */
-export async function issueStats24h(ids: string[], projectIds: string[]): Promise<Map<string, number[]>> {
+export async function issueStats24h(ids: string[], projectIds: string[], stage: Stage): Promise<Map<string, number[]>> {
   if (ids.length === 0) return new Map();
   const stats = await sentryGet<SentryIssue[]>(`/organizations/${ORG}/issues-stats/`, {
     groups: ids,
@@ -124,7 +127,7 @@ export async function issueStats24h(ids: string[], projectIds: string[]): Promis
     project: projectIds,
     statsPeriod: "24h",
     groupStatsPeriod: "24h",
-    environment: "prod",
+    environment: ENVIRONMENTS[stage],
   });
   return new Map(stats.map((issue) => [issue.id, (issue.stats?.["24h"] ?? []).map(([, count]) => count)]));
 }
@@ -143,32 +146,32 @@ export function deployedReleases(releases: SentryRelease[]): Release[] {
     .sort((a, b) => a.at.localeCompare(b.at));
 }
 
-export async function listDeployedReleases(projectId: string): Promise<Release[]> {
+export async function listDeployedReleases(projectId: string, stage: Stage): Promise<Release[]> {
   const releases = await sentryGet<SentryRelease[]>(`/organizations/${ORG}/releases/`, {
     project: projectId,
-    environment: "prod",
+    environment: ENVIRONMENTS[stage],
     per_page: "25",
     sort: "date",
   });
   return deployedReleases(releases);
 }
 
-export function latestEvents(issueId: string, limit = 20): Promise<SentryEvent[]> {
+export function latestEvents(issueId: string, stage: Stage, limit = 20): Promise<SentryEvent[]> {
   return sentryGet<SentryEvent[]>(`/organizations/${ORG}/issues/${issueId}/events/`, {
     full: "true",
     per_page: String(limit),
-    environment: "prod",
+    environment: ENVIRONMENTS[stage],
   });
 }
 
 /** Hourly error counts over 7 days across the given projects, oldest first. */
-export async function hourlyTotals(projectIds: string[]): Promise<{ at: string; count: number }[]> {
+export async function hourlyTotals(projectIds: string[], stage: Stage): Promise<{ at: string; count: number }[]> {
   const stats = await sentryGet<{ data: [number, { count: number }[]][] }>(`/organizations/${ORG}/events-stats/`, {
     project: projectIds,
     interval: "1h",
     statsPeriod: "7d",
     query: "event.type:error",
-    environment: "prod",
+    environment: ENVIRONMENTS[stage],
   });
   return stats.data.map(([seconds, counts]) => ({
     at: new Date(seconds * 1000).toISOString(),

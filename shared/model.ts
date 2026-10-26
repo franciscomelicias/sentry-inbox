@@ -56,10 +56,15 @@ export type EventFacts = {
   requestId: string | null;
   topFrame: { path: string; line: number } | null;
   timestamp: string;
+  /** Missing on facts cached before environments were read. */
+  environment?: string | null;
 };
 
 export const SIDES = ["FE", "BE", "MCP", "INT"] as const;
 export type Side = (typeof SIDES)[number];
+
+export const STAGES = ["prod", "dev"] as const;
+export type Stage = (typeof STAGES)[number];
 
 export const ORIGINS = ["browser", "script", "mixed"] as const;
 export type Origin = (typeof ORIGINS)[number];
@@ -106,6 +111,8 @@ export const issueRowSchema = z.object({
   spikingKnown: z.boolean(),
   realms: z.array(z.object({ name: z.string(), events: z.number(), users: z.number() })),
   links: z.array(linkSchema),
+  /** Sentry environments of the sampled events (staging, test, preprod on dev). */
+  environments: z.array(z.string()),
   rp: z.object({ key: z.string(), status: z.string(), done: z.boolean() }).optional(),
   triage: triageEntrySchema.optional(),
   owner: z.string().optional(),
@@ -147,6 +154,7 @@ export const filtersSchema = z.object({
   sides: z.array(z.enum(SIDES)),
   areas: z.array(z.string()),
   projects: z.array(z.string()).default([]),
+  environments: z.array(z.string()).default([]),
   release: z.enum(["current", "older", "any"]),
   origin: z.enum(["any", "browser", "script"]).default("any"),
   ticket: z.enum(["any", "hasRp", "noRp", "rpDone"]),
@@ -162,6 +170,7 @@ export const DEFAULT_FILTERS: Filters = {
   sides: [],
   areas: [],
   projects: [],
+  environments: [],
   release: "any",
   origin: "any",
   ticket: "any",
@@ -172,6 +181,7 @@ export const DEFAULT_FILTERS: Filters = {
 };
 
 export const prefsSchema = z.object({
+  stage: z.enum(STAGES).default("prod"),
   range: z.enum(RANGES),
   tab: z.enum(BUCKETS),
   filters: filtersSchema,

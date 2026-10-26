@@ -67,6 +67,7 @@ function classifyOne(issue: SentryIssue, input: ClassifyInput, ruleHits: Map<str
     spikingKnown: false,
     realms: realmsOf(facts),
     links: [],
+    environments: [...new Set(facts.flatMap((fact) => (fact.environment ? [fact.environment] : [])))].sort(),
     ...originOf(issue.project.slug, facts),
     triage: input.triage[issue.id],
   };

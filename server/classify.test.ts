@@ -272,6 +272,13 @@ describe("where it was thrown", () => {
   });
 });
 
+describe("environments", () => {
+  it("lists the distinct environments of the sampled events", () => {
+    const facts = new Map([["1", [fact("1", { environment: "test" }), fact("1", { environment: "staging" }), fact("1", { environment: "test" }), fact("1")]]]);
+    expect(rowOf(run({ facts }), "1").environments).toEqual(["staging", "test"]);
+  });
+});
+
 describe("origin", () => {
   const originOf = (feVersions: (string | null)[], project = "roger-customer-api-prod") =>
     rowOf(run({ issues: [issue("1", { project: { id: "1", slug: project } })], facts: new Map([["1", feVersions.map((feVersion) => fact("1", { feVersion }))]]) }), "1").origin;

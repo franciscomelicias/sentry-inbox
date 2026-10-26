@@ -36,6 +36,7 @@ export function extractFacts(event: SentryEvent, issueId: string, project: strin
       : text(contexts["Request Info"]?.RequestId),
     topFrame: topFrame(event),
     timestamp: event.dateCreated,
+    environment: event.tags?.find((tag) => tag.key === "environment")?.value ?? null,
   };
 }
 
