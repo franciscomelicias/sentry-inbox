@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { IssueRow } from "./model";
-import { investigateGroupPrompt, investigatePrompt, leadBrief, RULES_PATH, ticketMessage, TRIAGE_PATH } from "./prompts";
+import { investigateGroupPrompt, investigatePrompt, leadBrief, ticketMessage } from "./prompts";
+
+const RULES_PATH = "/home/someone/.sentry-inbox/rules.json";
+const TRIAGE_PATH = "/home/someone/.sentry-inbox/triage.json";
 
 const row: IssueRow = {
   id: "42",
@@ -29,21 +32,21 @@ const row: IssueRow = {
 
 describe("prompts", () => {
   it("briefs the lead with both state files and the no-Sentry-writes rule", () => {
-    const brief = leadBrief();
+    const brief = leadBrief({ rulesPath: RULES_PATH, triagePath: TRIAGE_PATH });
     expect(brief).toContain(RULES_PATH);
     expect(brief).toContain(TRIAGE_PATH);
     expect(brief).toContain("never write to Sentry");
   });
 
   it("points the investigation at the issue and the triage file, read-only", () => {
-    const prompt = investigatePrompt(row);
+    const prompt = investigatePrompt(row, TRIAGE_PATH);
     expect(prompt).toContain(row.permalink);
     expect(prompt).toContain(TRIAGE_PATH);
     expect(prompt).toContain("read-only");
   });
 
   it("lists every issue of a group and asks for a verdict per issue id, grouped by root cause", () => {
-    const prompt = investigateGroupPrompt([row, { ...row, id: "43", shortId: "ROGER-CUSTOMER-API-PROD-2R" }]);
+    const prompt = investigateGroupPrompt([row, { ...row, id: "43", shortId: "ROGER-CUSTOMER-API-PROD-2R" }], TRIAGE_PATH);
     expect(prompt).toContain("(id 42)");
     expect(prompt).toContain("(id 43)");
     expect(prompt).toContain("grouped by root cause");
@@ -51,11 +54,11 @@ describe("prompts", () => {
   });
 
   it("asks the lead to run /create-ticket for the issue", () => {
-    expect(ticketMessage(row)).toMatch(new RegExp(`^Run /create-ticket for ${row.permalink}`));
+    expect(ticketMessage(row, TRIAGE_PATH)).toMatch(new RegExp(`^Run /create-ticket for ${row.permalink}`));
   });
 
   it("passes the investigation verdict to the ticket when there is one", () => {
-    const message = ticketMessage({ ...row, triage: { verdict: "Cancel on a declined request is not guarded", reproSteps: ["decline", "cancel"] } });
+    const message = ticketMessage({ ...row, triage: { verdict: "Cancel on a declined request is not guarded", reproSteps: ["decline", "cancel"] } }, TRIAGE_PATH);
     expect(message).toContain("Cancel on a declined request is not guarded");
     expect(message).toContain("1. decline");
   });

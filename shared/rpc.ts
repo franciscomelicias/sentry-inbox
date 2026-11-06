@@ -44,3 +44,10 @@ export const setPrefsRpc = defineRpc({
   input: prefsSchema,
   output: z.object({}),
 });
+
+/** Server-side paths the agents need; the client can't read the server's env or home dir. */
+export const getPathsRpc = defineRpc({
+  name: "paths.get",
+  input: z.object({}),
+  output: z.object({ repoPath: z.string(), rulesPath: z.string(), triagePath: z.string() }),
+});

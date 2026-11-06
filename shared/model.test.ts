@@ -30,4 +30,18 @@ describe("areaOf", () => {
   it("falls back to Other", () => {
     expect(areaOf("src/foo/Bar.tsx")).toBe("Other");
   });
+
+  it("reads the endpoint before a generic top frame", () => {
+    expect(areaOf("PUT /v1/timesheets", "com/rogerhr/customer/persistence/jooq/AbstractMultiTenantRepository.java")).toBe("Time");
+  });
+
+  it("falls back to the top frame when the endpoint names no area", () => {
+    expect(areaOf("settle(axios/lib/core/settle)", "../../src/domain-ui/employee-compensation/grid/Grid.tsx")).toBe("Compensation");
+  });
+
+  it("maps compensation endpoints to Compensation, not Employee", () => {
+    expect(areaOf("POST /v1/employee-compensations/search")).toBe("Compensation");
+    expect(areaOf("GET /v1/employee/payment/reports")).toBe("Compensation");
+    expect(areaOf("com/rogerhr/customer/domain/employee_payment/EmployeePaymentService.java")).toBe("Compensation");
+  });
 });

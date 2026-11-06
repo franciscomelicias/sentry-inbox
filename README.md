@@ -17,7 +17,9 @@ A triage screen for RogerHR's production Sentry errors. Open **Sentry inbox** in
 - **Graphs** (`g`, closed on open; their data only loads once you open them): new issues and realms since deploy, events/hour before vs after the deploy, per-area before/after,
   7-day hourly bars with release markers, and an error × day heatmap (tap a cell to filter).
 - **Identical errors are grouped**: same side + same message = one line (▸ ×N, summed events and realms); open it to see each Sentry issue, 🙈 hides or marks all of them with one rule on the exact message.
-- **Filters** and **saved views**: search is always visible; **▸ Filters** opens one labelled row per filter (views, side,
+- **Filters** and **saved views**: search is always visible; it matches every word you type in the title, endpoint, area, file that threw and, on
+  FE rows, the failed API path and the page, whatever the spelling ("employee compensation" finds
+  `/v1/employee-compensations`, `employee_compensation/` and `EmployeeCompensationService`); **▸ Filters** opens one labelled row per filter (views, side,
   release, ticket, customer-api origin, service, environment, area, events ≥ N). Closed, it shows a one-line summary of
   what is active; "All"/"Any" means no filter on that row.
 - **Origin** (customer-api only): an event is from a browser when it carries `ROGERHR-FRONTEND-VERSION`, else from a script.
@@ -42,10 +44,11 @@ The plugin only **reads** Sentry and Jira; it never writes to Sentry.
 - Paseo ≥ 0.10.3 with plugins enabled, Node.js and npm.
 - A **Sentry auth token** with `org:read`, `project:read`, `event:read` (Sentry → Settings → Auth Tokens), either:
   - `SENTRY_AUTH_TOKEN` in the Paseo daemon's environment, or
-  - a Keychain item: `security add-generic-password -s sentry-inbox -a token -w <token>`
+  - on macOS, a Keychain item: `security add-generic-password -s sentry-inbox -a token -w <token>`
 - Optional, for RP statuses and "Fix didn't work": the Jira credentials paseo-board-dev uses (`JIRA_EMAIL` +
   `JIRA_API_TOKEN`, or Keychain service `paseo-board-jira` with accounts `email` and `token`).
-- The roger-platform checkout at `/Users/franciscomelicias/Documents/roger-platform` (agents' cwd, `git blame`).
+- The roger-platform checkout (agents' cwd, `git blame`): `~/Documents/roger-platform` by default, or set
+  `SENTRY_INBOX_REPO` in the daemon's environment.
 
 ## Install
 
@@ -55,6 +58,22 @@ npm install
 npm run typecheck && npm test
 paseo plugin install ~/paseo-plugins/sentry-inbox
 paseo plugin ls        # sentry-inbox must be "running"
+```
+
+### Linux
+
+There is no Keychain: put the token, and `SENTRY_INBOX_REPO` if your checkout lives elsewhere, in the daemon's
+environment. The daemon outlives a desktop logout, so restart it from a shell that has them:
+
+```bash
+cat > ~/.config/sentry-inbox.env <<'EOF'
+SENTRY_AUTH_TOKEN=<token>
+SENTRY_INBOX_REPO=/home/<you>/path/to/roger-platform
+EOF
+chmod 600 ~/.config/sentry-inbox.env
+echo 'set -a; . ~/.config/sentry-inbox.env; set +a' >> ~/.profile   # for the daemon started after the next login
+set -a; . ~/.config/sentry-inbox.env; set +a
+paseo daemon stop && paseo daemon start
 ```
 
 ## Versions and releases

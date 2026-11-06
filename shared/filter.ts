@@ -1,7 +1,7 @@
 import { DEFAULT_FILTERS, type Filters, type IssueRow, type Range } from "./model";
 
 export function applyFilters(rows: IssueRow[], filters: Filters): IssueRow[] {
-  const text = filters.text.trim().toLowerCase();
+  const words = normalize(filters.text).split(" ").filter(Boolean);
   return rows.filter((row) => {
     const sideOk = filters.sides.length === 0 || filters.sides.includes(row.side);
     const areaOk = filters.areas.length === 0 || filters.areas.includes(row.area);
@@ -11,12 +11,20 @@ export function applyFilters(rows: IssueRow[], filters: Filters): IssueRow[] {
     // Rows without an origin (other projects) are untouched by the origin filter.
     const originOk = filters.origin === "any" || !row.origin || row.origin === "mixed" || row.origin === filters.origin;
     const ticketOk = ticketMatches(row, filters.ticket);
-    const textOk = !text || `${row.title} ${row.shortId} ${row.culprit}`.toLowerCase().includes(text);
+    const searchable = normalize([row.title, row.shortId, row.culprit, row.topFrame ?? "", row.area, ...(row.urls ?? [])].join(" "));
+    const textOk = words.every((word) => searchable.includes(word));
     const cellOk = !filters.cell || filters.cell.issueId === row.id;
     const countsOk = row.userCount >= filters.minUsers && row.count >= filters.minEvents;
     return sideOk && areaOk && projectOk && environmentOk && releaseOk && originOk && ticketOk && textOk && cellOk && countsOk;
   });
 }
+
+/** "EmployeeCompensationService", "employee_compensation" and "/v1/employee-compensations" all read "employee compensation…". */
+const normalize = (text: string) =>
+  text
+    .replace(/(\p{Ll})(\p{Lu})/gu, "$1 $2")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ");
 
 function ticketMatches(row: IssueRow, ticket: Filters["ticket"]): boolean {
   if (ticket === "hasRp") return row.rp !== undefined;
