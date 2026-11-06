@@ -1,9 +1,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { repoPath } from "./paths";
 
 const execFileAsync = promisify(execFile);
-
-export const REPO_PATH = "/Users/franciscomelicias/Documents/roger-platform";
 
 let repoFiles: Promise<string[]> | null = null;
 const owners = new Map<string, Promise<string | null>>();
@@ -28,12 +27,12 @@ export function ownerOf(framePath: string, line: number): Promise<string | null>
 
 async function lookup(framePath: string, line: number): Promise<string | null> {
   try {
-    repoFiles ??= execFileAsync("git", ["-C", REPO_PATH, "ls-files"], { maxBuffer: 64 * 1024 * 1024 }).then(({ stdout }) =>
+    repoFiles ??= execFileAsync("git", ["-C", repoPath(), "ls-files"], { maxBuffer: 64 * 1024 * 1024 }).then(({ stdout }) =>
       stdout.split("\n"),
     );
     const file = repoPathFor(framePath, await repoFiles);
     if (!file || line < 1) return null;
-    const { stdout } = await execFileAsync("git", ["-C", REPO_PATH, "blame", "--porcelain", "-L", `${line},${line}`, "--", file]);
+    const { stdout } = await execFileAsync("git", ["-C", repoPath(), "blame", "--porcelain", "-L", `${line},${line}`, "--", file]);
     return parseBlameAuthor(stdout);
   } catch {
     return null;

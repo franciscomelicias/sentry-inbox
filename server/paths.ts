@@ -7,3 +7,4 @@ export const cacheDir = () => process.env.SENTRY_INBOX_CACHE ?? join(homedir(), 
 
 export const rulesPath = () => join(stateDir(), "rules.json");
 export const triagePath = () => join(stateDir(), "triage.json");
+export const repoPath = () => process.env.SENTRY_INBOX_REPO ?? join(homedir(), "Documents", "roger-platform");

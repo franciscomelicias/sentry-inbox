@@ -1,10 +1,10 @@
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
-import { usePaseo } from "@getpaseo/plugin/client";
+import { usePaseo, useRpc } from "@getpaseo/plugin/client";
 import { useState } from "react";
 import type { IssueRow } from "../shared/model";
 import { investigateGroupPrompt, investigatePrompt, leadBrief, ticketMessage } from "../shared/prompts";
+import { getPathsRpc } from "../shared/rpc";
 
-const REPO_PATH = "/Users/franciscomelicias/Documents/roger-platform";
 const PROVIDER = "claude/claude-opus-5-5";
 // Same mode paseo-board-dev starts its agents in: no permission prompt on every tool call.
 const AGENT_MODE = "auto";
@@ -18,6 +18,7 @@ const WORKSPACE_TITLE = "Sentry inbox";
  */
 export function useAgents(navigation: PluginSurfaceProps["navigation"]) {
   const paseo = usePaseo();
+  const fetchPaths = useRpc(getPathsRpc);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +43,8 @@ export function useAgents(navigation: PluginSurfaceProps["navigation"]) {
   const ensureLead = async (): Promise<{ id: string; workspaceId: string }> => {
     let lead = await findLead();
     if (!lead) {
-      await paseo.agents.create({ config: { provider: PROVIDER, modeId: AGENT_MODE }, cwd: REPO_PATH, title: LEAD_TITLE, labels: LEAD_LABELS, prompt: leadBrief() });
+      const paths = await fetchPaths({});
+      await paseo.agents.create({ config: { provider: PROVIDER, modeId: AGENT_MODE }, cwd: paths.repoPath, title: LEAD_TITLE, labels: LEAD_LABELS, prompt: leadBrief(paths) });
       lead = await findLead();
     }
     if (!lead?.workspaceId) throw new Error("lead:sentry has no workspace yet; try again in a moment");
@@ -54,23 +56,23 @@ export function useAgents(navigation: PluginSurfaceProps["navigation"]) {
   const openLead = () => run(LEAD_TITLE, async () => (await ensureLead()).id);
 
   /** Reopens the chat with that title in lead:sentry's workspace, or starts it. */
-  const openOrStart = (title: string, prompt: () => string) =>
+  const openOrStart = (title: string, prompt: (triagePath: string) => string) =>
     run(title, async () => {
       const lead = await ensureLead();
       const { entries } = await paseo.agents.list({ filter: { includeArchived: false } });
       const existing = entries.map((entry) => entry.agent).find((agent) => agent.title === title && agent.workspaceId === lead.workspaceId);
       if (existing) return existing.id;
-      const agent = await paseo.workspaces.ref(lead.workspaceId).agents.create({ config: { provider: PROVIDER, modeId: AGENT_MODE }, title, prompt: prompt() });
+      const agent = await paseo.workspaces.ref(lead.workspaceId).agents.create({ config: { provider: PROVIDER, modeId: AGENT_MODE }, title, prompt: prompt((await fetchPaths({})).triagePath) });
       return agent.id;
     });
 
-  const investigate = (row: IssueRow) => openOrStart(`Investigate ${row.shortId}`, () => investigatePrompt(row));
-  const investigateGroup = (rows: IssueRow[]) => openOrStart(`Investigate ${rows[0].shortId} +${rows.length - 1}`, () => investigateGroupPrompt(rows));
+  const investigate = (row: IssueRow) => openOrStart(`Investigate ${row.shortId}`, (triagePath) => investigatePrompt(row, triagePath));
+  const investigateGroup = (rows: IssueRow[]) => openOrStart(`Investigate ${rows[0].shortId} +${rows.length - 1}`, (triagePath) => investigateGroupPrompt(rows, triagePath));
 
   const ticket = (row: IssueRow) =>
     run(row.shortId, async () => {
       const lead = await ensureLead();
-      await paseo.agents.ref(lead.id).send(ticketMessage(row));
+      await paseo.agents.ref(lead.id).send(ticketMessage(row, (await fetchPaths({})).triagePath));
       return lead.id;
     });
 

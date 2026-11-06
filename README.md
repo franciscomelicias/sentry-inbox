@@ -42,10 +42,11 @@ The plugin only **reads** Sentry and Jira; it never writes to Sentry.
 - Paseo ≥ 0.10.3 with plugins enabled, Node.js and npm.
 - A **Sentry auth token** with `org:read`, `project:read`, `event:read` (Sentry → Settings → Auth Tokens), either:
   - `SENTRY_AUTH_TOKEN` in the Paseo daemon's environment, or
-  - a Keychain item: `security add-generic-password -s sentry-inbox -a token -w <token>`
+  - on macOS, a Keychain item: `security add-generic-password -s sentry-inbox -a token -w <token>`
 - Optional, for RP statuses and "Fix didn't work": the Jira credentials paseo-board-dev uses (`JIRA_EMAIL` +
   `JIRA_API_TOKEN`, or Keychain service `paseo-board-jira` with accounts `email` and `token`).
-- The roger-platform checkout at `/Users/franciscomelicias/Documents/roger-platform` (agents' cwd, `git blame`).
+- The roger-platform checkout (agents' cwd, `git blame`): `~/Documents/roger-platform` by default, or set
+  `SENTRY_INBOX_REPO` in the daemon's environment.
 
 ## Install
 
@@ -55,6 +56,22 @@ npm install
 npm run typecheck && npm test
 paseo plugin install ~/paseo-plugins/sentry-inbox
 paseo plugin ls        # sentry-inbox must be "running"
+```
+
+### Linux
+
+There is no Keychain: put the token, and `SENTRY_INBOX_REPO` if your checkout lives elsewhere, in the daemon's
+environment. The daemon outlives a desktop logout, so restart it from a shell that has them:
+
+```bash
+cat > ~/.config/sentry-inbox.env <<'EOF'
+SENTRY_AUTH_TOKEN=<token>
+SENTRY_INBOX_REPO=/home/<you>/path/to/roger-platform
+EOF
+chmod 600 ~/.config/sentry-inbox.env
+echo 'set -a; . ~/.config/sentry-inbox.env; set +a' >> ~/.profile   # for the daemon started after the next login
+set -a; . ~/.config/sentry-inbox.env; set +a
+paseo daemon stop && paseo daemon start
 ```
 
 ## Versions and releases
