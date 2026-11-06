@@ -37,11 +37,20 @@ export function extractFacts(event: SentryEvent, issueId: string, project: strin
     topFrame: topFrame(event),
     timestamp: event.dateCreated,
     environment: event.tags?.find((tag) => tag.key === "environment")?.value ?? null,
+    endpoint: frontend ? pathOf(contexts["endpoint"]?.url) : null,
+    page: frontend ? pathOf(event.tags?.find((tag) => tag.key === "url")?.value) : null,
   };
 }
 
 function text(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
+}
+
+/** Path of an absolute or relative URL, without its query; numeric ids become "*" so one page reads the same in every sample. */
+function pathOf(value: unknown): string | null {
+  const url = text(value);
+  // Sentry's data scrubbing replaces some URLs with "[Filtered]": nothing to search there.
+  return url && !url.includes("[Filtered]") ? new URL(url, "http://relative").pathname.replaceAll(/\/\d+(?=\/|$)/g, "/*") : null;
 }
 
 function entryValues(event: SentryEvent, type: string): unknown[] {

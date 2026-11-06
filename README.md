@@ -17,7 +17,9 @@ A triage screen for RogerHR's production Sentry errors. Open **Sentry inbox** in
 - **Graphs** (`g`, closed on open; their data only loads once you open them): new issues and realms since deploy, events/hour before vs after the deploy, per-area before/after,
   7-day hourly bars with release markers, and an error × day heatmap (tap a cell to filter).
 - **Identical errors are grouped**: same side + same message = one line (▸ ×N, summed events and realms); open it to see each Sentry issue, 🙈 hides or marks all of them with one rule on the exact message.
-- **Filters** and **saved views**: search is always visible; **▸ Filters** opens one labelled row per filter (views, side,
+- **Filters** and **saved views**: search is always visible; it matches every word you type in the title, endpoint, area, file that threw and, on
+  FE rows, the failed API path and the page, whatever the spelling ("employee compensation" finds
+  `/v1/employee-compensations`, `employee_compensation/` and `EmployeeCompensationService`); **▸ Filters** opens one labelled row per filter (views, side,
   release, ticket, customer-api origin, service, environment, area, events ≥ N). Closed, it shows a one-line summary of
   what is active; "All"/"Any" means no filter on that row.
 - **Origin** (customer-api only): an event is from a browser when it carries `ROGERHR-FRONTEND-VERSION`, else from a script.

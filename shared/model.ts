@@ -58,6 +58,9 @@ export type EventFacts = {
   timestamp: string;
   /** Missing on facts cached before environments were read. */
   environment?: string | null;
+  /** FE only: the API path that failed and the page it was called from. Missing on facts cached before they were read. */
+  endpoint?: string | null;
+  page?: string | null;
 };
 
 export const SIDES = ["FE", "BE", "MCP", "INT"] as const;
@@ -122,6 +125,8 @@ export const issueRowSchema = z.object({
   origin: z.enum(ORIGINS).optional(),
   /** "path:line" of our code where it was thrown, from the sampled events. */
   topFrame: z.string().optional(),
+  /** FE only: the API paths and pages of the sampled events, ids replaced by "*". */
+  urls: z.array(z.string()).optional(),
 });
 
 export type IssueRow = z.infer<typeof issueRowSchema>;

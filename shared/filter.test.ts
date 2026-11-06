@@ -50,6 +50,20 @@ describe("applyFilters", () => {
     expect(ids([row("1", { title: "NPE in TimesheetSearchService" }), row("2")], { text: "timesheet" })).toEqual(["1"]);
   });
 
+  it("matches a module whatever its spelling: endpoint, file path, Java class or FE url", () => {
+    const rows = [
+      row("1", { culprit: "POST /v1/employee-compensations/search" }),
+      row("2", { topFrame: "com/rogerhr/customer/domain/employee_compensation/EmployeeCompensationService.java:12" }),
+      row("3", { urls: ["/v1/employee-compensations/*", "/employees/*/compensation"] }),
+      row("4", { culprit: "POST /v1/employees/search" }),
+    ];
+    expect(ids(rows, { text: "Employee Compensation" })).toEqual(["1", "2", "3"]);
+  });
+
+  it("matches the area", () => {
+    expect(ids([row("1", { area: "Compensation" }), row("2")], { text: "compensation" })).toEqual(["1"]);
+  });
+
   it("keeps only the issue of a selected heatmap cell", () => {
     expect(ids([row("1"), row("2")], { cell: { issueId: "2", day: 3 } })).toEqual(["2"]);
   });

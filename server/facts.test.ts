@@ -27,6 +27,16 @@ describe("extractFacts", () => {
     });
   });
 
+  it("reads the failed API path and the page of a frontend event, ids replaced by *", () => {
+    const facts = extractFacts({ ...feEvent, tags: [...feEvent.tags, { key: "url", value: "https://app.rogerhr.ch/employees/12/compensation?tab=history" }] }, "2002", "roger-frontend-prod");
+    expect(facts).toMatchObject({ endpoint: "/v1/leave-requests/*/pending/cancel", page: "/employees/*/compensation" });
+  });
+
+  it("drops a URL Sentry scrubbed", () => {
+    const scrubbed = { ...feEvent, contexts: { ...feEvent.contexts, endpoint: { ...feEvent.contexts.endpoint, url: "[Filtered]" } } };
+    expect(extractFacts(scrubbed, "2002", "roger-frontend-prod").endpoint).toBeNull();
+  });
+
   it("falls back to the last api breadcrumb when the frontend event has no api_request context", () => {
     const { api_request: _, ...contexts } = feEvent.contexts;
     const facts = extractFacts({ ...feEvent, contexts }, "2002", "roger-frontend-prod");

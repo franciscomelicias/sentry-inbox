@@ -196,7 +196,8 @@ async function factsFor(issues: SentryIssue[], stage: Stage): Promise<{ facts: M
   let rateLimited = false;
   await inPool(issues, EVENTS_CONCURRENCY, async (issue) => {
     const cached = await readCachedFacts(issue.id);
-    if (cached?.lastSeen === issue.lastSeen) {
+    // Facts cached before endpoint and page were read are sampled again once.
+    if (cached?.lastSeen === issue.lastSeen && cached.facts.every((fact) => "page" in fact)) {
       facts.set(issue.id, cached.facts);
       return;
     }
