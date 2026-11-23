@@ -1,6 +1,6 @@
 import { areaOf } from "../shared/areas";
 import type { EventFacts, IssueRow, Rule, Side, Triage } from "../shared/model";
-import type { Ticket } from "./jira";
+import { TICKET_KEY, type Ticket } from "./linear";
 import type { Release, SentryIssue } from "./sentry";
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -103,7 +103,7 @@ function classifyOne(issue: SentryIssue, input: ClassifyInput, ruleHits: Map<str
     return row;
   }
 
-  const fixVersion = ticket?.done ? maxVersion(ticket.fixVersions.filter((version) => version.released).map((version) => version.name)) : null;
+  const fixVersion = ticket?.done ? maxVersion(ticket.releases.filter((version) => version.released).map((version) => version.name)) : null;
   if (fixVersion && facts.some((fact) => fact.release && compareVersions(fact.release, fixVersion) >= 0)) {
     row.bucket = "fixFailed";
     return row;
@@ -149,7 +149,7 @@ export function isLifted(
   if (until?.release && context.current && compareVersions(context.current, until.release) >= 0) return true;
   if (until?.eventsPerDayAbove !== undefined && context.last24 > until.eventsPerDayAbove) return true;
   const ticket = rp ? context.tickets.get(rp.toUpperCase()) : undefined;
-  return Boolean(ticket?.done && ticket.fixVersions.some((version) => version.released));
+  return Boolean(ticket?.done && ticket.releases.some((version) => version.released));
 }
 
 export function isStaleFe(issue: SentryIssue, facts: EventFacts[], currentFe: Release | null): boolean {
@@ -201,9 +201,9 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-/** The RP ticket linked to the issue in Sentry (Jira integration), if any. */
+/** The Linear ticket linked to the issue in Sentry (Linear integration), if any. */
 export function linkedRp(issue: SentryIssue): string | undefined {
-  return issue.annotations?.map((annotation) => annotation.displayName).find((name) => /^RP-\d+$/i.test(name));
+  return issue.annotations?.map((annotation) => annotation.displayName).find((name) => TICKET_KEY.test(name));
 }
 
 export function sideOf(project: string): Side {

@@ -12,9 +12,9 @@ const RELEASES: { value: Filters["release"]; label: string }[] = [
 ];
 const TICKETS: { value: Filters["ticket"]; label: string }[] = [
   { value: "any", label: "Any" },
-  { value: "hasRp", label: "Has RP" },
-  { value: "noRp", label: "No RP" },
-  { value: "rpDone", label: "RP done" },
+  { value: "hasRp", label: "Has ticket" },
+  { value: "noRp", label: "No ticket" },
+  { value: "rpDone", label: "Ticket done" },
 ];
 const ORIGINS: { value: Filters["origin"]; label: string }[] = [
   { value: "any", label: "All" },

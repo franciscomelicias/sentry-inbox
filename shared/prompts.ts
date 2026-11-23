@@ -10,7 +10,7 @@ Never drop entries you didn't mean to change, and keep them valid JSON (the scre
 1. ${rulesPath}: a JSON array of rules that hide or tag issues.
    { "id": "<uuid>", "kind": "known" | "ugly" | "hidden" | "snooze",
      "match": { "issueId"?, "project"?, "type"?, "messageRegex"?, "culprit"?, "realm"?: ["<realm>"] },
-     "reason": "<why>", "rp"?: "RP-1234",
+     "reason": "<why>", "rp"?: "ROG-1234",
      "until"?: { "date"?: "<ISO>", "release"?: "86.1.0", "eventsPerDayAbove"?: 50 },
      "createdAt": "<ISO>", "createdBy": "lead" }
    - All present match fields must match. "type" is the exception type (e.g. PayrollLockedException); "culprit" matches
@@ -27,7 +27,7 @@ Rules of conduct:
 - Read-only on Sentry: never write to Sentry (no resolve, assign, archive, comment).
 - Run /create-ticket only when asked (the screen's 🎫 button asks you). After it creates a ticket, write its key into
   triage.json["<issueId>"].rp.
-- When I ask in plain words ("hide all demo realms", "PayrollLocked on adjustments is known, RP-1234"), write the rule,
+- When I ask in plain words ("hide all demo realms", "PayrollLocked on adjustments is known, ROG-1234"), write the rule,
   then tell me in one line what you wrote.
 - Investigation agents write their verdicts into triage.json; read it there when asked about an issue.
 - Keep replies short.
@@ -42,7 +42,7 @@ Project ${row.project}, area ${row.area}, culprit ${row.culprit}. ${row.count} e
     row.realms.map((realm) => realm.name).join(", ") || "unknown"
   }. First seen ${row.firstSeen}${row.firstRelease ? ` (release ${row.firstRelease})` : ""}, last release ${row.lastRelease ?? "unknown"}.
 
-This is a read-only investigation: no code edits, no commits, no writes to Sentry or Jira.
+This is a read-only investigation: no code edits, no commits, no writes to Sentry or Linear.
 
 1. Read AGENTS.md and domain.md (run the setup-domain-knowledge skill if domain.md is missing).
 2. Fetch the issue and its latest events with the Sentry MCP (org rogerhr, region https://de.sentry.io); run Seer analysis on it.
@@ -69,7 +69,7 @@ export function investigateGroupPrompt(rows: IssueRow[], triagePath: string): st
   return `Investigate these ${rows.length} Sentry issues. They share the message "${rows[0].title}" but may have different causes:
 ${issues}
 
-This is a read-only investigation: no code edits, no commits, no writes to Sentry or Jira.
+This is a read-only investigation: no code edits, no commits, no writes to Sentry or Linear.
 
 1. Read AGENTS.md and domain.md (run the setup-domain-knowledge skill if domain.md is missing).
 2. For each issue: fetch it and its latest events with the Sentry MCP (org rogerhr, region https://de.sentry.io), read the
@@ -92,6 +92,6 @@ export function ticketMessage(row: IssueRow, triagePath: string): string {
     : "";
   return `Run /create-ticket for ${row.permalink} (${row.shortId}: ${row.title}).${verdict}
 Realms: ${row.realms.map((realm) => realm.name).join(", ") || "unknown"}.
-Then write the RP key into ${triagePath}["${row.id}"].rp.`;
+Then write the ROG key into ${triagePath}["${row.id}"].rp.`;
 }
 

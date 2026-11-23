@@ -7,7 +7,7 @@ const knownRule = {
   kind: "known",
   match: { type: "PayrollLockedException", culprit: "AdjustmentService" },
   reason: "locked period",
-  rp: "RP-1234",
+  rp: "ROG-1234",
   createdAt: "2026-10-20T08:00:00Z",
   createdBy: "lead",
 };

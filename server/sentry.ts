@@ -36,7 +36,7 @@ export type SentryIssue = {
   project: { id: string; slug: string };
   metadata?: { type?: string; value?: string };
   stats?: Record<string, [number, number][]>;
-  /** External links; Sentry's Jira integration adds one per linked ticket. */
+  /** External links; Sentry's Linear integration adds one per linked ticket. */
   annotations?: { url: string; displayName: string }[];
 };
 

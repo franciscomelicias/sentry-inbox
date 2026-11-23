@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EventFacts, Rule } from "../shared/model";
 import { classifyIssues, compareVersions, type ClassifyInput } from "./classify";
-import type { Ticket } from "./jira";
+import type { Ticket } from "./linear";
 import type { SentryIssue } from "./sentry";
 
 const NOW = "2026-10-20T12:00:00.000Z";
@@ -66,7 +66,7 @@ function rule(overrides: Partial<Rule>): Rule {
 // Live since 2 days ago; facts default to NOW, so they are after the release.
 const live = (version: string) => ({ version, at: daysAgo(2) });
 
-const doneTicket = (fixVersion: string): Ticket => ({ status: "Done", done: true, fixVersions: [{ name: fixVersion, released: true }] });
+const doneTicket = (fixVersion: string): Ticket => ({ status: "Done", done: true, releases: [{ name: fixVersion, released: true }] });
 
 function run(overrides: Partial<ClassifyInput>) {
   const input: ClassifyInput = {
@@ -129,24 +129,24 @@ describe("rules", () => {
 });
 
 describe("fix didn't work", () => {
-  it("flags a ruled issue whose RP is done but still happens on a later release", () => {
+  it("flags a ruled issue whose ticket is done but still happens on a later release", () => {
     const result = run({
-      rules: [rule({ rp: "RP-1" })],
-      tickets: new Map([["RP-1", doneTicket("84.1.0")]]),
+      rules: [rule({ rp: "ROG-1" })],
+      tickets: new Map([["ROG-1", doneTicket("84.1.0")]]),
     });
-    expect(rowOf(result, "1")).toMatchObject({ bucket: "fixFailed", rp: { key: "RP-1", done: true } });
+    expect(rowOf(result, "1")).toMatchObject({ bucket: "fixFailed", rp: { key: "ROG-1", done: true } });
   });
 
   it("flags an issue ticketed through triage the same way", () => {
-    const result = run({ triage: { "1": { rp: "RP-2" } }, tickets: new Map([["RP-2", doneTicket("84.1.0")]]) });
+    const result = run({ triage: { "1": { rp: "ROG-2" } }, tickets: new Map([["ROG-2", doneTicket("84.1.0")]]) });
     expect(rowOf(result, "1").bucket).toBe("fixFailed");
   });
 
   it("does not flag when the events are older than the fix version", () => {
     const result = run({
       facts: new Map([["1", [fact("1", { release: "84.0.0" })]]]),
-      triage: { "1": { rp: "RP-2" } },
-      tickets: new Map([["RP-2", doneTicket("84.1.0")]]),
+      triage: { "1": { rp: "ROG-2" } },
+      tickets: new Map([["ROG-2", doneTicket("84.1.0")]]),
     });
     expect(rowOf(result, "1").bucket).not.toBe("fixFailed");
   });
@@ -273,10 +273,10 @@ describe("where it was thrown", () => {
 });
 
 describe("linked ticket", () => {
-  it("takes the RP linked in Sentry and its Jira status", () => {
-    const annotations = [{ url: "https://example.com/x", displayName: "Docs" }, { url: "https://rogerhr.atlassian.net/browse/RP-42", displayName: "RP-42" }];
-    const tickets = new Map([["RP-42", { status: "In Progress", done: false, fixVersions: [] }]]);
-    expect(rowOf(run({ issues: [issue("1", { annotations })], tickets }), "1").rp).toEqual({ key: "RP-42", status: "In Progress", done: false });
+  it("takes the ticket linked in Sentry and its Linear status", () => {
+    const annotations = [{ url: "https://example.com/x", displayName: "Docs" }, { url: "https://linear.app/rogerhr/issue/ROG-42", displayName: "ROG-42" }];
+    const tickets = new Map([["ROG-42", { status: "In Progress", done: false, releases: [] }]]);
+    expect(rowOf(run({ issues: [issue("1", { annotations })], tickets }), "1").rp).toEqual({ key: "ROG-42", status: "In Progress", done: false });
   });
 });
 

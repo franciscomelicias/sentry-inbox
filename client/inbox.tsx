@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { applyFilters } from "../shared/filter";
 import { groupRows } from "../shared/insights";
-import { jiraBrowseUrl, STAGES, type Bucket, type Inbox, type IssueRow, type Prefs, type Range } from "../shared/model";
+import { linearIssueUrl, STAGES, type Bucket, type Inbox, type IssueRow, type Prefs, type Range } from "../shared/model";
 import { getGraphsRpc, getInboxRpc, getPrefsRpc, getVersionRpc, setPrefsRpc, updateRpc } from "../shared/rpc";
 import { useAgents } from "./agents";
 import { FilterBar } from "./filters";
@@ -124,7 +124,7 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
         }
         if (!selected) return false;
         if (key === "o") setExpandedId((id) => (id === selected.id ? null : selected.id));
-        else if (key === "t" && selected.rp) void openExternalUrl(jiraBrowseUrl(selected.rp.key));
+        else if (key === "t" && selected.rp) void openExternalUrl(linearIssueUrl(selected.rp.key));
         else if (key === "i" || key === "t") {
           const confirmed = armed?.key === key && armed.id === selected.id && Date.now() - armed.at < ARM_MS;
           if (!confirmed) {

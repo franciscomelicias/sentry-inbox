@@ -7,7 +7,7 @@ A triage screen for RogerHR's production Sentry errors. Open **Sentry inbox** in
   **Hidden** tab lists every rule with its hit count, flags rules with 0 hits in 30 days as dead, and shows invalid ones.
 - A known error that **spikes** (last 24h > 10× its 14-day daily median and ≥ 20) comes back with a "known, but spiking" badge.
 - Tabs: **New** · **Regressed** · **Spiking** · **Ongoing** · **Known but ugly** (known, but still a raw error for the user)
-  · **Fix didn't work** (RP done and released, still happening on that release or later) · **Hidden**.
+  · **Fix didn't work** (ticket done and released, still happening on that release or later) · **Hidden**.
 - **Since last deploy** is the default range; also 24h / 7d / 14d.
 - **prod / dev** switch in the header: dev reads every `-dev` project across the staging, test and preprod environments
   at once; an **Environment** filter then narrows to one of them (it only shows when the rows span more than one).
@@ -30,14 +30,14 @@ A triage screen for RogerHR's production Sentry errors. Open **Sentry inbox** in
   `triage.json`; the verdict then shows in the expanded row.
 - **🔍 on a group** (▸ ×N): one chat investigates every issue of the group, writes each one's verdict into `triage.json`
   (so each row shows its own), and answers with the issues grouped by root cause.
-- **🎫 Ticket**: asks lead:sentry to run `/create-ticket` for the issue (with the verdict), then the RP shows on the row.
-  An RP linked in Sentry (Jira integration) also shows on the row with its Jira status; then 🎫 becomes **🔗** (or `t`, or a click on the badge),
-  which opens the ticket in Jira instead of creating one.
+- **🎫 Ticket**: asks lead:sentry to run `/create-ticket` for the issue (with the verdict), then the ticket shows on the row.
+  A ticket linked in Sentry (Linear integration) also shows on the row with its Linear status; then 🎫 becomes **🔗** (or `t`, or a click on the badge),
+  which opens the ticket in Linear instead of creating one.
 - **💬 lead:sentry**: a long-lived agent (created on first click, labelled `source: sentry-inbox-lead`) that owns the
-  judgement calls. Ask in plain words: "hide all demo realms", "PayrollLocked on adjustments is known, RP-1234".
+  judgement calls. Ask in plain words: "hide all demo realms", "PayrollLocked on adjustments is known, ROG-1234".
 - Keys: `j`/`k` move, `o` expand, `i i` investigate, `t t` ticket (press twice: they start agents), `h`/`u` hide menu, `g` graphs, `/` search, `?` help.
 
-The plugin only **reads** Sentry and Jira; it never writes to Sentry.
+The plugin only **reads** Sentry and Linear; it never writes to Sentry.
 
 ## Requirements
 
@@ -45,8 +45,9 @@ The plugin only **reads** Sentry and Jira; it never writes to Sentry.
 - A **Sentry auth token** with `org:read`, `project:read`, `event:read` (Sentry → Settings → Auth Tokens), either:
   - `SENTRY_AUTH_TOKEN` in the Paseo daemon's environment, or
   - on macOS, a Keychain item: `security add-generic-password -s sentry-inbox -a token -w <token>`
-- Optional, for RP statuses and "Fix didn't work": the Jira credentials paseo-board-dev uses (`JIRA_EMAIL` +
-  `JIRA_API_TOKEN`, or Keychain service `paseo-board-jira` with accounts `email` and `token`).
+- Optional, for ticket statuses and "Fix didn't work": a Linear personal API key (read is enough), in `LINEAR_API_KEY`
+  or the Keychain: `security add-generic-password -U -s sentry-inbox -a linear -w` (then paste the key).
+  "Fix didn't work" compares Linear release names as versions (`86.0.1`).
 - The roger-platform checkout (agents' cwd, `git blame`): `~/Documents/roger-platform` by default, or set
   `SENTRY_INBOX_REPO` in the daemon's environment.
 
@@ -92,7 +93,7 @@ paseo daemon stop && paseo daemon start
 - After editing: `paseo plugin reload sentry-inbox`. Logs: `paseo plugin logs sentry-inbox`.
 - Shared state (screen + lead:sentry), `~/.sentry-inbox/`:
   - `rules.json`: hide/known/ugly/snooze rules. The screen refuses to write it while it doesn't parse.
-  - `triage.json`: investigation verdicts and RP keys, keyed by Sentry issue id.
+  - `triage.json`: investigation verdicts and ticket keys, keyed by Sentry issue id.
 - Cache, `~/.cache/sentry-inbox/`: `prefs.json` (range, tab, filters, views), `inbox.json` (last good inbox, served
   with a "stale" banner when Sentry is rate-limited or down), `facts/<issueId>.json` (sampled events, refetched only
   when the issue's lastSeen moves).

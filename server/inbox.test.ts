@@ -14,7 +14,7 @@ vi.mock("./sentry", async (importOriginal) => ({
   hourlyTotals: vi.fn(async () => []),
   latestEvents: vi.fn(),
 }));
-vi.mock("./jira", async (importOriginal) => ({ ...(await importOriginal<typeof import("./jira")>()), fetchTickets: vi.fn(async () => new Map()) }));
+vi.mock("./linear", async (importOriginal) => ({ ...(await importOriginal<typeof import("./linear")>()), fetchTickets: vi.fn(async () => new Map()) }));
 vi.mock("./blame", () => ({ ownerOf: vi.fn(async () => null) }));
 
 const sentry = await import("./sentry");

@@ -3,7 +3,7 @@ import { ownerOf } from "./blame";
 import { classifyIssues, linkedRp } from "./classify";
 import { extractFacts } from "./facts";
 import { buildGraphs } from "./graphs";
-import { fetchTickets, type Ticket } from "./jira";
+import { fetchTickets, type Ticket } from "./linear";
 import {
   hourlyTotals,
   issueStats24h,

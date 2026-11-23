@@ -2,7 +2,7 @@ import { openExternalUrl } from "@getpaseo/plugin/client";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { IssueGroup } from "../shared/insights";
-import { jiraBrowseUrl, type IssueRow } from "../shared/model";
+import { linearIssueUrl, type IssueRow } from "../shared/model";
 import { GroupHideMenu, HideMenu } from "./hide-menu";
 import { serviceOf } from "../shared/areas";
 import { COLUMN, eventsColor, serviceColor, type Styles } from "./styles";
@@ -54,7 +54,7 @@ export function IssueRowView(props: Props) {
             {row.origin === "script" ? <Text style={styles.badgeWarning}>🤖 script</Text> : null}
             {row.origin === "mixed" ? <Text style={styles.badgeWarning}>🤖 script + browser</Text> : null}
             {row.rp ? (
-              <Pressable accessibilityRole="link" onPress={() => void openExternalUrl(jiraBrowseUrl(row.rp!.key))}>
+              <Pressable accessibilityRole="link" onPress={() => void openExternalUrl(linearIssueUrl(row.rp!.key))}>
                 <Text style={row.rp.done ? styles.badge : styles.badgeWarning}>{`${row.rp.key} ${row.rp.status} ↗`}</Text>
               </Pressable>
             ) : null}
@@ -70,9 +70,9 @@ export function IssueRowView(props: Props) {
         <View style={styles.actions}>
           <SmallButton label="🔍" hint="Investigate: AI analysis + repro steps (i i)" disabled={!props.agentsAvailable} onPress={props.onInvestigate} styles={styles} />
           {row.rp ? (
-            <SmallButton label="🔗" hint={`Open ${row.rp.key} in Jira (t)`} onPress={() => void openExternalUrl(jiraBrowseUrl(row.rp!.key))} styles={styles} />
+            <SmallButton label="🔗" hint={`Open ${row.rp.key} in Linear (t)`} onPress={() => void openExternalUrl(linearIssueUrl(row.rp!.key))} styles={styles} />
           ) : (
-            <SmallButton label="🎫" hint="Create an RP ticket via lead:sentry (t t)" disabled={!props.agentsAvailable} onPress={props.onTicket} styles={styles} />
+            <SmallButton label="🎫" hint="Create a ticket via lead:sentry (t t)" disabled={!props.agentsAvailable} onPress={props.onTicket} styles={styles} />
           )}
           <SmallButton label="🙈" hint="Hide, snooze or mark as known (h)" onPress={props.onToggleHide} styles={styles} />
           <SmallButton label="↗" hint="Open in Sentry" onPress={() => void openExternalUrl(row.permalink)} styles={styles} />

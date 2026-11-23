@@ -59,7 +59,7 @@ export function HideMenu({ row, nextRelease, styles, onDone }: { row: IssueRow; 
         />
       </View>
       <View style={styles.wrap}>
-        <TextInput value={reason} onChangeText={setReason} placeholder="Why is it normal? (e.g. locked period, RP-1234)" placeholderTextColor={styles.colors.foregroundMuted} style={[styles.input, { flex: 1 }]} />
+        <TextInput value={reason} onChangeText={setReason} placeholder="Why is it normal? (e.g. locked period, ROG-1234)" placeholderTextColor={styles.colors.foregroundMuted} style={[styles.input, { flex: 1 }]} />
         <Item label="Mark as known" onPress={needsReason("known")} styles={styles} />
         <Item label="Known but ugly" onPress={needsReason("ugly")} styles={styles} />
       </View>
@@ -110,7 +110,7 @@ export function GroupHideMenu({ title, project, size, styles, onDone }: { title:
         />
       </View>
       <View style={styles.wrap}>
-        <TextInput value={reason} onChangeText={setReason} placeholder="Why is it normal? (e.g. validation error, RP-1234)" placeholderTextColor={styles.colors.foregroundMuted} style={[styles.input, { flex: 1 }]} />
+        <TextInput value={reason} onChangeText={setReason} placeholder="Why is it normal? (e.g. validation error, ROG-1234)" placeholderTextColor={styles.colors.foregroundMuted} style={[styles.input, { flex: 1 }]} />
         <Item label="Mark all as known" onPress={withReason("known")} styles={styles} />
         <Item label="Known but ugly" onPress={withReason("ugly")} styles={styles} />
       </View>

@@ -37,8 +37,8 @@ describe("applyFilters", () => {
     expect(ids([row("old", { isCurrentRelease: false }), row("current")], { release: "older" })).toEqual(["old"]);
   });
 
-  it("drops issues with an RP when asking for no RP", () => {
-    const rows = [row("1", { rp: { key: "RP-1", status: "Open", done: false } }), row("2")];
+  it("drops issues with a ticket when asking for no ticket", () => {
+    const rows = [row("1", { rp: { key: "ROG-1", status: "Open", done: false } }), row("2")];
     expect(ids(rows, { ticket: "noRp" })).toEqual(["2"]);
   });
 
