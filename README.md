@@ -80,7 +80,9 @@ paseo daemon stop && paseo daemon start
 
 - The version is `package.json`'s; `shared/version.ts` is generated from it by npm's `version` hook (don't edit it).
 - The header shows `vX.Y.Z` (opens the GitHub releases). When GitHub has a newer release it shows
-  `⬆ vA.B.C available` in yellow, which opens that release. Checked against GitHub at most every 6 hours.
+  `⬆ vA.B.C available` in yellow, which opens that release, and an **Update** button: it runs `git pull --ff-only` in
+  the plugin folder (`~/paseo-plugins/sentry-inbox`, or `SENTRY_INBOX_PLUGIN_DIR`), `npm install` when the lockfile
+  changed, and reloads the plugin. Checked against GitHub at most every 6 hours.
 - To release, from a clean `main`: `npm run release -- patch|minor|major` (default patch). It runs typecheck and tests,
   bumps and commits the version, tags `vX.Y.Z`, pushes, creates the GitHub release with generated notes and reloads
   the plugin.
@@ -95,6 +97,6 @@ paseo daemon stop && paseo daemon start
   with a "stale" banner when Sentry is rate-limited or down), `facts/<issueId>.json` (sampled events, refetched only
   when the issue's lastSeen moves).
 - The first load samples 20 events for every unresolved prod issue (≤ 200 issues); later loads only refetch changed issues.
-- Override the dirs with `SENTRY_INBOX_HOME` / `SENTRY_INBOX_CACHE`. `SENTRY_INBOX_FAKE_429=1` simulates a rate limit.
+- Override the dirs with `SENTRY_INBOX_HOME` / `SENTRY_INBOX_CACHE` / `SENTRY_INBOX_PLUGIN_DIR`. `SENTRY_INBOX_FAKE_429=1` simulates a rate limit.
 - Tuning lives in code: spike thresholds and stale-FE messages in `server/classify.ts`, area table in `shared/areas.ts`,
   caps in `server/sentry.ts` / `server/inbox.ts`, agent model in `client/agents.ts`.

@@ -1,12 +1,12 @@
 import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
 import { openExternalUrl, useRpc } from "@getpaseo/plugin/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { applyFilters } from "../shared/filter";
 import { groupRows } from "../shared/insights";
 import { jiraBrowseUrl, STAGES, type Bucket, type Inbox, type IssueRow, type Prefs, type Range } from "../shared/model";
-import { getGraphsRpc, getInboxRpc, getPrefsRpc, getVersionRpc, setPrefsRpc } from "../shared/rpc";
+import { getGraphsRpc, getInboxRpc, getPrefsRpc, getVersionRpc, setPrefsRpc, updateRpc } from "../shared/rpc";
 import { useAgents } from "./agents";
 import { FilterBar } from "./filters";
 import { GraphsPanel } from "./graphs";
@@ -60,6 +60,8 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
   });
   const fetchVersion = useRpc(getVersionRpc);
   const version = useQuery({ queryKey: ["sentry-inbox-version"], queryFn: () => fetchVersion({}), staleTime: Infinity });
+  const runUpdate = useRpc(updateRpc);
+  const update = useMutation({ mutationFn: () => runUpdate({}) });
   const queryClient = useQueryClient();
   const forceRefresh = () =>
     void queryClient.fetchQuery({ queryKey: ["sentry-inbox", stage, range], queryFn: () => fetchInbox({ stage, range, force: true }), staleTime: 0 });
@@ -153,6 +155,13 @@ export function InboxSurface({ theme, layout, navigation }: PluginSurfaceProps) 
             </Text>
           </Pressable>
         ) : null}
+        {version.data?.latest && !update.data ? (
+          <Pressable accessibilityRole="button" disabled={update.isPending} onPress={() => update.mutate()}>
+            <Text style={styles.chipActive}>{update.isPending ? "Updating…" : "Update"}</Text>
+          </Pressable>
+        ) : null}
+        {update.data ? <Text style={styles.muted}>{update.data.message}</Text> : null}
+        {update.error ? <Text style={styles.error}>Update failed: {String(update.error)}</Text> : null}
         {STAGES.map((value) => (
           // Project and environment filters name one stage's projects: drop them on a switch.
           <Pressable key={value} accessibilityRole="button" onPress={() => updatePrefs({ stage: value, filters: { ...prefs.filters, projects: [], environments: [] } })}>
